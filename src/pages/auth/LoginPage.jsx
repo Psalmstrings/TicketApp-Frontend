@@ -142,10 +142,10 @@ export default function LoginPage() {
         </p>
 
         {/* Demo credentials hint */}
-        <div style={{ marginTop: '24px', background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)', borderRadius: '12px', padding: '14px', textAlign: 'center' }}>
+        {/* <div style={{ marginTop: '24px', background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)', borderRadius: '12px', padding: '14px', textAlign: 'center' }}>
           <p style={{ color: '#64748b', fontSize: '12px', margin: '0 0 6px', fontWeight: 600 }}>Admin Demo Account</p>
           <p style={{ color: '#64748b', fontSize: '11px', margin: 0, fontFamily: 'monospace' }}>admin@tickapp.com / Admin@1234</p>
-        </div>
+        </div> */}
       </div>
     </div>
   );
