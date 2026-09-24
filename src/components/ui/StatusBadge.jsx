@@ -1,89 +1,122 @@
 import React from 'react';
-import { CheckCircle, Clock, Ban } from 'lucide-react';
+import { CheckCircle, Clock, Ban, AlertCircle, Tag, ShieldCheck } from 'lucide-react';
 
 const STATUS_CONFIG = {
   APPROVED: {
     label: 'Approved',
     icon: CheckCircle,
-    color: '#10b981',
-    bg: 'rgba(16, 185, 129, 0.12)',
-    border: 'rgba(16, 185, 129, 0.3)',
+    color: '#059669',
+    bg: '#ECFDF5',
+    border: '#A7F3D0',
   },
   PENDING: {
-    label: 'Pending',
+    label: 'Pending Review',
     icon: Clock,
-    color: '#f59e0b',
-    bg: 'rgba(245, 158, 11, 0.12)',
-    border: 'rgba(245, 158, 11, 0.3)',
+    color: '#D97706',
+    bg: '#FFFBEB',
+    border: '#FDE68A',
   },
   SUSPENDED: {
     label: 'Suspended',
     icon: Ban,
-    color: '#ef4444',
-    bg: 'rgba(239, 68, 68, 0.12)',
-    border: 'rgba(239, 68, 68, 0.3)',
+    color: '#DC2626',
+    bg: '#FEF2F2',
+    border: '#FECACA',
   },
   ACTIVE: {
     label: 'Active',
     icon: CheckCircle,
-    color: '#10b981',
-    bg: 'rgba(16, 185, 129, 0.12)',
-    border: 'rgba(16, 185, 129, 0.3)',
+    color: '#059669',
+    bg: '#ECFDF5',
+    border: '#A7F3D0',
+  },
+  SOLD: {
+    label: 'Valid / Active',
+    icon: ShieldCheck,
+    color: '#059669',
+    bg: '#ECFDF5',
+    border: '#A7F3D0',
   },
   CANCELLED: {
     label: 'Cancelled',
     icon: Ban,
-    color: '#ef4444',
-    bg: 'rgba(239, 68, 68, 0.12)',
-    border: 'rgba(239, 68, 68, 0.3)',
+    color: '#DC2626',
+    bg: '#FEF2F2',
+    border: '#FECACA',
   },
   USED: {
-    label: 'Used',
+    label: 'Redeemed',
     icon: CheckCircle,
-    color: '#64748b',
-    bg: 'rgba(100, 116, 139, 0.12)',
-    border: 'rgba(100, 116, 139, 0.3)',
+    color: '#6B7280',
+    bg: '#F3F4F6',
+    border: '#E5E7EB',
+  },
+  TRANSFERRED: {
+    label: 'Transferred',
+    icon: Tag,
+    color: '#7C3AED',
+    bg: '#F5F3FF',
+    border: '#DDD6FE',
+  },
+  TRANSFER_PENDING: {
+    label: 'Transfer Pending',
+    icon: Clock,
+    color: '#D97706',
+    bg: '#FFFBEB',
+    border: '#FDE68A',
+  },
+  LISTED: {
+    label: 'Listed for Resale',
+    icon: Tag,
+    color: '#EA580C',
+    bg: '#FFF7ED',
+    border: '#FED7AA',
   },
   DRAFT: {
     label: 'Draft',
     icon: Clock,
-    color: '#94a3b8',
-    bg: 'rgba(148, 163, 184, 0.1)',
-    border: 'rgba(148, 163, 184, 0.2)',
+    color: '#6B7280',
+    bg: '#F3F4F6',
+    border: '#E5E7EB',
   },
   PUBLISHED: {
     label: 'Published',
     icon: CheckCircle,
-    color: '#6366f1',
-    bg: 'rgba(99, 102, 241, 0.12)',
-    border: 'rgba(99, 102, 241, 0.3)',
+    color: '#026CDF',
+    bg: '#EFF6FF',
+    border: '#BFDBFE',
   },
 };
 
-/**
- * StatusBadge - displays a coloured badge for user/event/ticket status
- * @param {string} status - e.g. 'APPROVED' | 'PENDING' | 'SUSPENDED'
- * @param {boolean} showIcon - show icon (default true)
- * @param {string} className - extra class names
- */
-export default function StatusBadge({ status, showIcon = true, className = '' }) {
+export default function StatusBadge({ status, showIcon = true, className = '', style = {} }) {
   const config = STATUS_CONFIG[status?.toUpperCase()] ?? {
     label: status ?? 'Unknown',
     icon: Clock,
-    color: '#94a3b8',
-    bg: 'rgba(148, 163, 184, 0.1)',
-    border: 'rgba(148, 163, 184, 0.2)',
+    color: '#6B7280',
+    bg: '#F3F4F6',
+    border: '#E5E7EB',
   };
 
   const Icon = config.icon;
 
   return (
     <span
-      className={`badge ${className}`}
+      className={className}
       style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '4px',
+        padding: '3px 9px',
+        borderRadius: '9999px',
+        fontSize: '11px',
+        fontWeight: 700,
+        textTransform: 'uppercase',
+        letterSpacing: '0.04em',
         color: config.color,
-        background: config.bg,
+        backgroundColor: config.bg,
         border: `1px solid ${config.border}`,
+        lineHeight: 1.2,
+        ...style,
       }}
     >
       {showIcon && <Icon size={12} />}

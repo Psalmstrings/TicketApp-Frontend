@@ -1,89 +1,101 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, Search, Ticket, PlusCircle, User, Lock } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext.jsx';
+import { Compass, Sparkles, Ticket, DollarSign, User } from 'lucide-react';
 
 const NAV_ITEMS = [
-  { to: '/home', icon: Home, label: 'Home' },
-  { to: '/explore', icon: Search, label: 'Explore' },
-  { to: '/tickets', icon: Ticket, label: 'Tickets' },
-  { to: '/create', icon: PlusCircle, label: 'Create', requireApproved: true },
-  { to: '/profile', icon: User, label: 'Profile' },
+  { to: '/home', icon: Compass, label: 'Discover' },
+  { to: '/for-you', icon: Sparkles, label: 'For You' },
+  { to: '/tickets', icon: Ticket, label: 'My Tickets' },
+  { to: '/resale', icon: DollarSign, label: 'Sell' },
+  { to: '/profile', icon: User, label: 'My Account' },
 ];
 
 export default function BottomNav() {
-  const { user } = useAuth();
   const location = useLocation();
 
-  const isApproved = user?.status === 'APPROVED' || user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
-
   return (
-    <nav style={{
-      position: 'fixed',
-      bottom: 0,
-      left: '50%',
-      transform: 'translateX(-50%)',
-      width: '100%',
-      maxWidth: '430px',
-      background: 'rgba(15,15,26,0.95)',
-      backdropFilter: 'blur(20px)',
-      borderTop: '1px solid rgba(99,102,241,0.2)',
-      display: 'flex',
-      alignItems: 'center',
-      height: '64px',
-      zIndex: 500,
-      boxSizing: 'border-box',
-    }}>
-      {NAV_ITEMS.map(({ to, icon: Icon, label, requireApproved }) => {
-        const isActive = location.pathname === to || (to !== '/home' && location.pathname.startsWith(to));
-        const isLocked = requireApproved && !isApproved;
+    <nav
+      className="mobile-only"
+      style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: '#FFFFFF',
+        borderTop: '1px solid #E5E5E5',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-around',
+        height: '64px',
+        zIndex: 1000,
+        boxShadow: '0 -2px 10px rgba(0, 0, 0, 0.05)',
+      }}
+    >
+      {NAV_ITEMS.map(({ to, icon: Icon, label }) => {
+        const isActive =
+          location.pathname === to ||
+          (to === '/home' && location.pathname === '/') ||
+          (to !== '/home' && location.pathname.startsWith(to));
 
         return (
           <NavLink
             key={to}
             to={to}
-            style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '3px', textDecoration: 'none', padding: '8px 4px', position: 'relative' }}
-          >
-            <div style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '12px',
+            style={{
+              flex: 1,
               display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              background: isActive ? 'linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.2))' : 'transparent',
-              transition: 'all 0.2s',
+              gap: '4px',
+              textDecoration: 'none',
+              height: '100%',
+              color: isActive ? '#026CDF' : '#6B6B6B',
+              transition: 'color 0.15s ease',
               position: 'relative',
-            }}>
-              {isLocked ? (
-                <Lock size={20} color="#374151" />
-              ) : (
-                <Icon
-                  size={20}
-                  color={isActive ? '#818cf8' : '#4b5563'}
-                  strokeWidth={isActive ? 2.5 : 2}
-                />
-              )}
+            }}
+          >
+            <div
+              style={{
+                width: '32px',
+                height: '28px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '8px',
+                backgroundColor: isActive ? '#EBF3FD' : 'transparent',
+                transition: 'background-color 0.15s ease',
+              }}
+            >
+              <Icon
+                size={20}
+                color={isActive ? '#026CDF' : '#6B6B6B'}
+                strokeWidth={isActive ? 2.5 : 2}
+              />
             </div>
-            <span style={{
-              fontSize: '10px',
-              fontWeight: isActive ? 600 : 400,
-              color: isActive ? '#818cf8' : '#4b5563',
-              letterSpacing: '0.3px',
-            }}>
+            <span
+              style={{
+                fontSize: '11px',
+                fontWeight: isActive ? 700 : 500,
+                lineHeight: 1,
+              }}
+            >
               {label}
             </span>
+
+            {/* Active top line accent indicator */}
             {isActive && (
-              <div style={{
-                position: 'absolute',
-                top: 0,
-                left: '50%',
-                transform: 'translateX(-50%)',
-                width: '24px',
-                height: '2px',
-                background: 'linear-gradient(90deg, #6366f1, #8b5cf6)',
-                borderRadius: '0 0 4px 4px',
-              }} />
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: '25%',
+                  right: '25%',
+                  height: '3px',
+                  backgroundColor: '#026CDF',
+                  borderRadius: '0 0 3px 3px',
+                }}
+              />
             )}
           </NavLink>
         );

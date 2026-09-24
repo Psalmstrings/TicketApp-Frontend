@@ -1,31 +1,46 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Check, AlertTriangle, Trash2, X, ChevronDown } from 'lucide-react';
+import { Search, Check, AlertTriangle, Trash2, X, Users } from 'lucide-react';
 import api from '../../lib/axios.js';
 
 const STATUS_BADGE = {
-  PENDING: { bg: 'rgba(245,158,11,0.15)', color: '#f59e0b', label: 'Pending' },
-  APPROVED: { bg: 'rgba(16,185,129,0.15)', color: '#10b981', label: 'Approved' },
-  SUSPENDED: { bg: 'rgba(239,68,68,0.15)', color: '#ef4444', label: 'Suspended' },
-  DELETED: { bg: 'rgba(107,114,128,0.15)', color: '#6b7280', label: 'Deleted' },
+  PENDING:   { bg: '#FFF7ED', color: '#D97706', label: 'Pending' },
+  APPROVED:  { bg: '#F0FDF4', color: '#16A34A', label: 'Approved' },
+  SUSPENDED: { bg: '#FEF2F2', color: '#DC2626', label: 'Suspended' },
+  DELETED:   { bg: '#F3F4F6', color: '#6B7280', label: 'Deleted' },
 };
 
 function SuspendModal({ user, onClose, onConfirm }) {
   const [reason, setReason] = useState('');
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'flex-end', zIndex: 1000 }} onClick={onClose}>
-      <div style={{ background: '#1e1e3a', borderRadius: '24px 24px 0 0', padding: '24px 20px 48px', width: '100%' }} onClick={e => e.stopPropagation()}>
-        <h3 style={{ color: '#e2e8f0', fontSize: '18px', fontWeight: 700, margin: '0 0 6px' }}>Suspend User</h3>
-        <p style={{ color: '#64748b', fontSize: '13px', margin: '0 0 16px' }}>Suspending: {user.firstName} {user.lastName}</p>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '24px' }} onClick={onClose}>
+      <div style={{ background: '#FFFFFF', borderRadius: '12px', padding: '28px', width: '100%', maxWidth: '440px', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+          <h3 style={{ color: '#1F1F1F', fontSize: '18px', fontWeight: 700, margin: 0 }}>Suspend User</h3>
+          <button onClick={onClose} style={{ background: '#F5F5F5', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <X size={16} color="#6B6B6B" />
+          </button>
+        </div>
+        <p style={{ color: '#6B6B6B', fontSize: '13px', margin: '0 0 16px' }}>
+          Suspending: <strong style={{ color: '#1F1F1F' }}>{user.firstName} {user.lastName}</strong> ({user.email})
+        </p>
+        <label style={{ display: 'block', color: '#1F1F1F', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>Reason for suspension</label>
         <textarea
           value={reason}
           onChange={e => setReason(e.target.value)}
-          placeholder="Reason for suspension..."
+          placeholder="Enter a reason..."
           rows={3}
-          style={{ width: '100%', padding: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#e2e8f0', fontSize: '14px', outline: 'none', boxSizing: 'border-box', marginBottom: '16px', resize: 'vertical' }}
+          style={{ width: '100%', padding: '12px', background: '#FFFFFF', border: '1px solid #E5E5E5', borderRadius: '6px', color: '#1F1F1F', fontSize: '14px', outline: 'none', boxSizing: 'border-box', marginBottom: '16px', resize: 'vertical' }}
+          onFocus={e => e.target.style.borderColor = '#DC2626'}
+          onBlur={e => e.target.style.borderColor = '#E5E5E5'}
         />
-        <button onClick={() => onConfirm(reason)} style={{ width: '100%', padding: '14px', background: 'linear-gradient(135deg, #ef4444, #dc2626)', border: 'none', borderRadius: '14px', color: '#fff', fontWeight: 600, fontSize: '15px', cursor: 'pointer' }}>
-          Suspend User
-        </button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button onClick={onClose} style={{ flex: 1, padding: '11px', background: '#FFFFFF', border: '1px solid #E5E5E5', borderRadius: '6px', color: '#1F1F1F', fontWeight: 600, fontSize: '14px', cursor: 'pointer' }}>
+            Cancel
+          </button>
+          <button onClick={() => onConfirm(reason)} style={{ flex: 1, padding: '11px', background: '#DC2626', border: 'none', borderRadius: '6px', color: '#FFFFFF', fontWeight: 700, fontSize: '14px', cursor: 'pointer' }}>
+            Suspend User
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -38,6 +53,7 @@ export default function AdminUsersPage() {
   const [statusFilter, setStatusFilter] = useState('All');
   const [suspendTarget, setSuspendTarget] = useState(null);
   const [actionMsg, setActionMsg] = useState('');
+  const [actionType, setActionType] = useState('success');
 
   const STATUS_FILTERS = ['All', 'PENDING', 'APPROVED', 'SUSPENDED'];
 
@@ -53,30 +69,32 @@ export default function AdminUsersPage() {
     finally { setLoading(false); }
   };
 
+  const showMsg = (msg, type = 'success') => { setActionMsg(msg); setActionType(type); setTimeout(() => setActionMsg(''), 3000); };
+
   const handleApprove = async (userId) => {
     try {
       await api.patch(`/admin/users/${userId}/approve`);
-      setActionMsg('User approved!');
+      showMsg('User approved successfully.');
       fetchUsers();
-    } catch (err) { setActionMsg(err.response?.data?.message || 'Failed'); }
+    } catch (err) { showMsg(err.response?.data?.message || 'Failed', 'error'); }
   };
 
   const handleSuspend = async (userId, reason) => {
     try {
       await api.patch(`/admin/users/${userId}/suspend`, { reason });
-      setActionMsg('User suspended.');
+      showMsg('User suspended.');
       setSuspendTarget(null);
       fetchUsers();
-    } catch (err) { setActionMsg(err.response?.data?.message || 'Failed'); }
+    } catch (err) { showMsg(err.response?.data?.message || 'Failed', 'error'); }
   };
 
   const handleDelete = async (userId) => {
     if (!window.confirm('Delete this user? This cannot be undone.')) return;
     try {
       await api.delete(`/admin/users/${userId}`);
-      setActionMsg('User deleted.');
+      showMsg('User deleted.');
       fetchUsers();
-    } catch (err) { setActionMsg(err.response?.data?.message || 'Failed'); }
+    } catch (err) { showMsg(err.response?.data?.message || 'Failed', 'error'); }
   };
 
   const filtered = (Array.isArray(users) ? users : []).filter(u => {
@@ -85,80 +103,117 @@ export default function AdminUsersPage() {
     return matchSearch && matchStatus;
   });
 
-  const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+  const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+
+  const btnStyle = (variant) => ({
+    padding: '5px 12px', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+    ...(variant === 'approve' ? { background: '#026CDF', color: '#FFFFFF', border: 'none' }
+      : variant === 'suspend' ? { background: '#FFFFFF', color: '#D97706', border: '1px solid #D97706' }
+      : { background: '#FFFFFF', color: '#DC2626', border: '1px solid #DC2626' }),
+  });
 
   return (
-    <div style={{ padding: '16px' }}>
+    <div style={{ padding: '24px' }}>
+      {/* Page header */}
+      <div style={{ marginBottom: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+          <Users size={22} color="#1F1F1F" />
+          <h2 style={{ color: '#1F1F1F', fontSize: '22px', fontWeight: 800, margin: 0 }}>Users & Approval</h2>
+        </div>
+        <p style={{ color: '#6B6B6B', fontSize: '14px', margin: 0 }}>{filtered.length} user{filtered.length !== 1 ? 's' : ''} {statusFilter !== 'All' ? `· ${statusFilter}` : ''}</p>
+      </div>
+
+      {/* Action message */}
       {actionMsg && (
-        <div style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '12px', padding: '12px', marginBottom: '14px', color: '#818cf8', fontSize: '13px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ background: '#FFFFFF', border: `1px solid #E5E5E5`, borderLeft: `4px solid ${actionType === 'success' ? '#16A34A' : '#DC2626'}`, borderRadius: '8px', padding: '12px 16px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: actionType === 'success' ? '#15803D' : '#DC2626', fontSize: '13px', fontWeight: 600 }}>
           {actionMsg}
-          <button onClick={() => setActionMsg('')} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={14} color="#818cf8" /></button>
+          <button onClick={() => setActionMsg('')} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={14} color={actionType === 'success' ? '#15803D' : '#DC2626'} /></button>
         </div>
       )}
 
-      {/* Search */}
-      <div style={{ display: 'flex', gap: '10px', alignItems: 'center', background: '#1a1a2e', borderRadius: '12px', padding: '10px 14px', border: '1px solid rgba(255,255,255,0.08)', marginBottom: '12px' }}>
-        <Search size={16} color="#64748b" />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search users..." style={{ background: 'transparent', border: 'none', outline: 'none', color: '#e2e8f0', fontSize: '14px', flex: 1 }} />
+      {/* Search & Filter */}
+      <div style={{ background: '#FFFFFF', border: '1px solid #E5E5E5', borderRadius: '8px', padding: '16px', marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '200px', border: '1px solid #E5E5E5', borderRadius: '6px', padding: '8px 12px', background: '#FAFAFA' }}>
+          <Search size={16} color="#6B6B6B" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name, email, phone…" style={{ background: 'transparent', border: 'none', outline: 'none', color: '#1F1F1F', fontSize: '14px', flex: 1 }} />
+        </div>
+        <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+          {STATUS_FILTERS.map(f => (
+            <button key={f} onClick={() => setStatusFilter(f)} style={{ padding: '7px 14px', borderRadius: '20px', border: '1px solid', borderColor: statusFilter === f ? '#026CDF' : '#E5E5E5', background: statusFilter === f ? '#026CDF' : '#FFFFFF', color: statusFilter === f ? '#FFFFFF' : '#6B6B6B', fontSize: '12px', fontWeight: statusFilter === f ? 600 : 400, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s' }}>
+              {f}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Status Filter */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', overflowX: 'auto', scrollbarWidth: 'none' }}>
-        {STATUS_FILTERS.map(f => (
-          <button key={f} onClick={() => setStatusFilter(f)}
-            style={{ padding: '6px 14px', borderRadius: '20px', border: '1px solid', borderColor: statusFilter === f ? '#6366f1' : 'rgba(255,255,255,0.1)', background: statusFilter === f ? 'rgba(99,102,241,0.2)' : 'transparent', color: statusFilter === f ? '#818cf8' : '#64748b', fontSize: '12px', fontWeight: statusFilter === f ? 600 : 400, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            {f}
-          </button>
-        ))}
-      </div>
-
-      <p style={{ color: '#475569', fontSize: '12px', margin: '0 0 12px' }}>{filtered.length} user{filtered.length !== 1 ? 's' : ''}</p>
-
-      {loading ? (
-        [1,2,3].map(i => <div key={i} style={{ height: '90px', background: '#1a1a2e', borderRadius: '14px', marginBottom: '10px' }} />)
-      ) : filtered.map(user => {
-        const badge = STATUS_BADGE[user.status] || { bg: 'rgba(107,114,128,0.15)', color: '#6b7280', label: user.status };
-        return (
-          <div key={user._id} style={{ background: '#1a1a2e', borderRadius: '16px', padding: '14px', marginBottom: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '10px' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {user.avatar?.url ? <img src={user.avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ color: '#fff', fontWeight: 700, fontSize: '14px' }}>{user.firstName?.[0]}{user.lastName?.[0]}</span>}
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div>
-                    <p style={{ color: '#e2e8f0', fontWeight: 700, fontSize: '14px', margin: '0 0 2px' }}>{user.firstName} {user.lastName}</p>
-                    <p style={{ color: '#64748b', fontSize: '12px', margin: '0 0 1px' }}>{user.email}</p>
-                    <p style={{ color: '#475569', fontSize: '11px', margin: 0 }}>{user.phone} · Joined {formatDate(user.createdAt)}</p>
-                  </div>
-                  <span style={{ background: badge.bg, color: badge.color, padding: '3px 8px', borderRadius: '8px', fontSize: '10px', fontWeight: 600, flexShrink: 0 }}>{badge.label}</span>
-                </div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              {user.status === 'PENDING' && (
-                <button onClick={() => handleApprove(user._id)}
-                  style={{ flex: 1, padding: '9px', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '10px', color: '#10b981', fontWeight: 600, fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                  <Check size={14} /> Approve
-                </button>
-              )}
-              {user.status === 'APPROVED' && (
-                <button onClick={() => setSuspendTarget(user)}
-                  style={{ flex: 1, padding: '9px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '10px', color: '#f59e0b', fontWeight: 600, fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                  <AlertTriangle size={14} /> Suspend
-                </button>
-              )}
-              <button onClick={() => handleDelete(user._id)}
-                style={{ flex: 1, padding: '9px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '10px', color: '#ef4444', fontWeight: 600, fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                <Trash2 size={14} /> Delete
-              </button>
-            </div>
+      {/* Table */}
+      <div style={{ background: '#FFFFFF', border: '1px solid #E5E5E5', borderRadius: '8px', overflow: 'hidden' }}>
+        {loading ? (
+          <div style={{ padding: '60px', textAlign: 'center', color: '#6B6B6B', fontSize: '14px' }}>Loading users…</div>
+        ) : filtered.length === 0 ? (
+          <div style={{ padding: '60px', textAlign: 'center' }}>
+            <Users size={32} color="#D1D5DB" style={{ marginBottom: '10px' }} />
+            <p style={{ color: '#6B6B6B', fontSize: '14px', margin: 0 }}>No users found</p>
           </div>
-        );
-      })}
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E5E5' }}>
+                  {['User', 'Email', 'Phone', 'Status', 'Role', 'Joined', 'Actions'].map(h => (
+                    <th key={h} style={{ padding: '12px 16px', textAlign: 'left', color: '#6B6B6B', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(user => {
+                  const badge = STATUS_BADGE[user.status] || { bg: '#F3F4F6', color: '#6B7280', label: user.status };
+                  return (
+                    <tr key={user._id} style={{ borderBottom: '1px solid #F3F4F6', transition: 'background 0.1s' }} onMouseEnter={e => e.currentTarget.style.background = '#F9FAFB'} onMouseLeave={e => e.currentTarget.style.background = ''}>
+                      <td style={{ padding: '14px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            {user.avatar?.url
+                              ? <img src={user.avatar.url} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                              : <span style={{ color: '#026CDF', fontWeight: 700, fontSize: '12px' }}>{user.firstName?.[0]}{user.lastName?.[0]}</span>
+                            }
+                          </div>
+                          <span style={{ color: '#1F1F1F', fontWeight: 600, fontSize: '14px', whiteSpace: 'nowrap' }}>{user.firstName} {user.lastName}</span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '14px 16px', color: '#6B6B6B', fontSize: '13px' }}>{user.email}</td>
+                      <td style={{ padding: '14px 16px', color: '#6B6B6B', fontSize: '13px', whiteSpace: 'nowrap' }}>{user.phone || '—'}</td>
+                      <td style={{ padding: '14px 16px' }}>
+                        <span style={{ display: 'inline-block', background: badge.bg, color: badge.color, padding: '3px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, whiteSpace: 'nowrap' }}>{badge.label}</span>
+                      </td>
+                      <td style={{ padding: '14px 16px', color: '#6B6B6B', fontSize: '13px' }}>{user.role || 'USER'}</td>
+                      <td style={{ padding: '14px 16px', color: '#6B6B6B', fontSize: '13px', whiteSpace: 'nowrap' }}>{formatDate(user.createdAt)}</td>
+                      <td style={{ padding: '14px 16px' }}>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'nowrap' }}>
+                          {(user.status === 'PENDING' || user.status === 'SUSPENDED') && (
+                            <button onClick={() => handleApprove(user._id)} style={btnStyle('approve')}><Check size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '3px' }} />Approve</button>
+                          )}
+                          {(user.status === 'PENDING' || user.status === 'APPROVED') && (
+                            <button onClick={() => setSuspendTarget(user)} style={btnStyle('suspend')}><AlertTriangle size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '3px' }} />Suspend</button>
+                          )}
+                          <button onClick={() => handleDelete(user._id)} style={btnStyle('delete')}><Trash2 size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '3px' }} />Delete</button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {suspendTarget && (
-        <SuspendModal user={suspendTarget} onClose={() => setSuspendTarget(null)} onConfirm={(reason) => handleSuspend(suspendTarget._id, reason)} />
+        <SuspendModal
+          user={suspendTarget}
+          onClose={() => setSuspendTarget(null)}
+          onConfirm={(reason) => handleSuspend(suspendTarget._id, reason)}
+        />
       )}
     </div>
   );

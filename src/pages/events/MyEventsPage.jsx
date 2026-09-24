@@ -1,107 +1,206 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, Clock, MapPin, Plus, ChevronRight, Users, Ticket } from 'lucide-react';
-import api from '../../lib/axios.js';
 import AppLayout from '../../components/layout/AppLayout.jsx';
-
-const STATUS_BADGE = {
-  PUBLISHED: { bg: 'rgba(16,185,129,0.15)', color: '#10b981', label: 'Published' },
-  DRAFT: { bg: 'rgba(107,114,128,0.15)', color: '#6b7280', label: 'Draft' },
-  PENDING_APPROVAL: { bg: 'rgba(245,158,11,0.15)', color: '#f59e0b', label: 'Pending' },
-  REJECTED: { bg: 'rgba(239,68,68,0.15)', color: '#ef4444', label: 'Rejected' },
-  SUSPENDED: { bg: 'rgba(239,68,68,0.15)', color: '#ef4444', label: 'Suspended' },
-  ENDED: { bg: 'rgba(107,114,128,0.15)', color: '#6b7280', label: 'Ended' },
-};
+import TicketmasterSpinner from '../../components/ui/TicketmasterSpinner.jsx';
+import StatusBadge from '../../components/ui/StatusBadge.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
+import api from '../../lib/axios.js';
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  Plus,
+  Users,
+  Ticket,
+  ChevronLeft,
+  ArrowRight,
+  TrendingUp,
+  DollarSign,
+  AlertCircle,
+} from 'lucide-react';
 
 export default function MyEventsPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const isApproved = user?.status === 'APPROVED' || user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+
   useEffect(() => {
-    api.get('/events/organizer/my-events')
+    api
+      .get('/events/organizer/my-events')
       .then(({ data }) => {
         const list = Array.isArray(data?.data) ? data.data : Array.isArray(data?.events) ? data.events : Array.isArray(data) ? data : [];
         setEvents(list);
       })
-      .catch((err) => { console.error(err); setEvents([]); })
+      .catch((err) => {
+        console.error(err);
+        setEvents([]);
+      })
       .finally(() => setLoading(false));
   }, []);
 
-  const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+  const totalEvents = events.length;
+  const publishedCount = events.filter((e) => e.status === 'PUBLISHED').length;
 
   return (
     <AppLayout>
-      <div style={{ paddingBottom: '100px', minHeight: '100vh' }}>
-        <div style={{ background: 'linear-gradient(135deg, #1e1b4b, #2d1b69)', padding: '48px 16px 24px' }}>
-          <button onClick={() => navigate(-1)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', marginBottom: '12px' }}>
-            <ArrowLeft size={18} color="#fff" />
-          </button>
-          <h1 style={{ color: '#fff', fontSize: '22px', fontWeight: 800, margin: 0 }}>My Events</h1>
+      {/* Header Bar */}
+      <div style={{ backgroundColor: '#FFFFFF', borderBottom: '1px solid #E5E5E5', padding: '28px 0 20px' }}>
+        <div className="tm-container">
+          <Link
+            to="/for-you"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              color: '#026CDF',
+              fontSize: '13px',
+              fontWeight: 700,
+              textDecoration: 'none',
+              marginBottom: '12px',
+            }}
+          >
+            <ChevronLeft size={16} /> Back to For You
+          </Link>
+
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
+            <div>
+              <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#1F1F1F', margin: 0 }}>
+                Organizer Dashboard
+              </h1>
+              <p style={{ fontSize: '13px', color: '#6B6B6B', margin: '4px 0 0' }}>
+                Manage created events, ticket tiers, attendee manifests, and publication status.
+              </p>
+            </div>
+
+            <Link
+              to="/create"
+              className="btn-primary"
+              style={{ padding: '10px 20px', fontSize: '14px', borderRadius: '8px' }}
+            >
+              <Plus size={16} /> Create New Event
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="tm-container" style={{ padding: '32px 20px', maxWidth: '960px' }}>
+        {/* Analytics Highlights */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '32px' }}>
+          <div style={{ backgroundColor: '#FFFFFF', padding: '18px 20px', borderRadius: '12px', border: '1px solid #E5E5E5', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: '#6B6B6B', textTransform: 'uppercase' }}>Total Created</span>
+            <p style={{ margin: '4px 0 0', fontSize: '24px', fontWeight: 800, color: '#1F1F1F' }}>{totalEvents}</p>
+          </div>
+
+          <div style={{ backgroundColor: '#FFFFFF', padding: '18px 20px', borderRadius: '12px', border: '1px solid #E5E5E5', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: '#6B6B6B', textTransform: 'uppercase' }}>Published Live</span>
+            <p style={{ margin: '4px 0 0', fontSize: '24px', fontWeight: 800, color: '#059669' }}>{publishedCount}</p>
+          </div>
+
+          <div style={{ backgroundColor: '#FFFFFF', padding: '18px 20px', borderRadius: '12px', border: '1px solid #E5E5E5', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: '#6B6B6B', textTransform: 'uppercase' }}>Account Status</span>
+            <div style={{ marginTop: '6px' }}>
+              <StatusBadge status={user?.status || 'PENDING'} />
+            </div>
+          </div>
         </div>
 
-        <div style={{ padding: '16px' }}>
-          {loading ? (
-            [1,2,3].map(i => (
-              <div key={i} style={{ height: '100px', background: '#1a1a2e', borderRadius: '16px', marginBottom: '12px' }} />
-            ))
-          ) : !Array.isArray(events) || events.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-              <Calendar size={40} color="#374151" style={{ marginBottom: '12px' }} />
-              <p style={{ color: '#64748b', fontSize: '16px', fontWeight: 600, margin: '0 0 6px' }}>No events yet</p>
-              <p style={{ color: '#374151', fontSize: '13px', margin: '0 0 20px' }}>Create your first event to get started!</p>
-              <Link to="/create" style={{ display: 'inline-block', padding: '12px 24px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', borderRadius: '12px', color: '#fff', fontWeight: 600, fontSize: '14px', textDecoration: 'none' }}>
-                Create Event
-              </Link>
-            </div>
-          ) : (
-            (Array.isArray(events) ? events : []).map(event => {
-              const badge = STATUS_BADGE[event.status] || { bg: 'rgba(107,114,128,0.15)', color: '#6b7280', label: event.status };
+        {/* Events List Section */}
+        {loading ? (
+          <div style={{ padding: '60px 0', textAlign: 'center' }}>
+            <TicketmasterSpinner size="md" message="Loading your events..." />
+          </div>
+        ) : events.length === 0 ? (
+          <div
+            style={{
+              textAlign: 'center',
+              padding: '60px 20px',
+              backgroundColor: '#FFFFFF',
+              borderRadius: '16px',
+              border: '1px solid #E5E5E5',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+            }}
+          >
+            <Calendar size={40} color="#D1D5DB" style={{ marginBottom: '12px' }} />
+            <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#1F1F1F', margin: '0 0 6px 0' }}>
+              No organized events yet
+            </h3>
+            <p style={{ fontSize: '14px', color: '#6B6B6B', margin: '0 0 20px 0', lineHeight: 1.5 }}>
+              Launch your first concert tour, sports exhibition, or show in 4 steps with Ticketmaster's wizard.
+            </p>
+            <Link to="/create" className="btn-primary" style={{ padding: '12px 24px', borderRadius: '8px' }}>
+              Create Your First Event
+            </Link>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {events.map((ev) => {
+              const dateStr = ev.startDate
+                ? new Date(ev.startDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+                : 'Date TBA';
+
+              const imageUrl =
+                ev.coverImage?.url ||
+                ev.bannerImage ||
+                'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=800&auto=format&fit=crop&q=80';
+
               return (
-                <Link key={event._id} to={`/events/${event._id}`} style={{ textDecoration: 'none' }}>
-                  <div style={{ background: '#1a1a2e', borderRadius: '16px', padding: '16px', marginBottom: '12px', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', gap: '14px' }}>
-                    <div style={{ width: '70px', height: '70px', borderRadius: '12px', flexShrink: 0, background: event.coverImage?.url ? `url(${event.coverImage.url}) center/cover` : 'linear-gradient(135deg, #4f46e5, #7c3aed)' }} />
-                    <div style={{ flex: 1, overflow: 'hidden' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
-                        <p style={{ color: '#e2e8f0', fontWeight: 700, fontSize: '14px', margin: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: '8px' }}>
-                          {event.title}
-                        </p>
-                        <span style={{ background: badge.bg, color: badge.color, borderRadius: '8px', padding: '3px 8px', fontSize: '10px', fontWeight: 600, flexShrink: 0 }}>
-                          {badge.label}
+                <div
+                  key={ev._id}
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: '14px',
+                    border: '1px solid #E5E5E5',
+                    padding: '18px 20px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '18px',
+                  }}
+                >
+                  <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flex: 1, minWidth: '280px' }}>
+                    <img
+                      src={imageUrl}
+                      alt=""
+                      style={{ width: '70px', height: '70px', borderRadius: '10px', objectFit: 'cover', flexShrink: 0 }}
+                    />
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                        <StatusBadge status={ev.status} />
+                        <span style={{ fontSize: '11px', color: '#6B6B6B', fontWeight: 600, textTransform: 'uppercase' }}>
+                          {ev.category}
                         </span>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
-                        <MapPin size={11} color="#6366f1" />
-                        <p style={{ color: '#64748b', fontSize: '12px', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.venue}</p>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Clock size={11} color="#475569" />
-                        <p style={{ color: '#475569', fontSize: '11px', margin: 0 }}>{formatDate(event.startDate)}</p>
-                      </div>
+
+                      <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#1F1F1F', margin: '0 0 3px 0' }}>
+                        {ev.title}
+                      </h3>
+
+                      <p style={{ fontSize: '12px', color: '#6B6B6B', margin: 0 }}>
+                        📍 {ev.venue} • 📅 {dateStr}
+                      </p>
                     </div>
                   </div>
-                </Link>
-              );
-            })
-          )}
-        </div>
 
-        <Link to="/create" style={{
-          position: 'fixed',
-          bottom: '90px',
-          right: '20px',
-          width: '56px',
-          height: '56px',
-          borderRadius: '50%',
-          background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: '0 4px 20px rgba(99,102,241,0.4)',
-          textDecoration: 'none',
-        }}>
-          <Plus size={24} color="#fff" />
-        </Link>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Link
+                      to={`/events/${ev._id}`}
+                      className="btn-outline"
+                      style={{ padding: '8px 16px', fontSize: '13px' }}
+                    >
+                      View Live Page
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </AppLayout>
   );

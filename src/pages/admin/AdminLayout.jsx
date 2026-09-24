@@ -1,56 +1,108 @@
 import React from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Users, Calendar, Ticket, ShoppingBag, FileText, BarChart3, ArrowLeft } from 'lucide-react';
+import { NavLink, Outlet, useNavigate, Link } from 'react-router-dom';
+import {
+  Users,
+  Calendar,
+  Ticket,
+  ShoppingBag,
+  FileText,
+  BarChart3,
+  ArrowLeft,
+  Shield,
+  ExternalLink,
+} from 'lucide-react';
+import TicketmasterLogo from '../../components/ui/TicketmasterLogo.jsx';
 
 const NAV_ITEMS = [
-  { to: '/admin', icon: <BarChart3 size={18} />, label: 'Stats', end: true },
-  { to: '/admin/users', icon: <Users size={18} />, label: 'Users' },
-  { to: '/admin/events', icon: <Calendar size={18} />, label: 'Events' },
-  { to: '/admin/tickets', icon: <Ticket size={18} />, label: 'Tickets' },
-  { to: '/admin/orders', icon: <ShoppingBag size={18} />, label: 'Orders' },
-  { to: '/admin/logs', icon: <FileText size={18} />, label: 'Logs' },
+  { to: '/admin', icon: <BarChart3 size={16} />, label: 'Analytics', end: true },
+  { to: '/admin/users', icon: <Users size={16} />, label: 'Users & Approval' },
+  { to: '/admin/events', icon: <Calendar size={16} />, label: 'Events' },
+  { to: '/admin/tickets', icon: <Ticket size={16} />, label: 'Tickets' },
+  { to: '/admin/orders', icon: <ShoppingBag size={16} />, label: 'Orders' },
+  { to: '/admin/logs', icon: <FileText size={16} />, label: 'Audit Logs' },
 ];
 
 export default function AdminLayout() {
   const navigate = useNavigate();
+
   return (
-    <div style={{ minHeight: '100vh', background: '#0f0f1a' }}>
-      {/* Admin Header */}
-      <div style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', padding: '48px 16px 0', position: 'sticky', top: 0, zIndex: 100 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-          <button onClick={() => navigate('/home')} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-            <ArrowLeft size={18} color="#fff" />
-          </button>
-          <div>
-            <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '11px', margin: 0, textTransform: 'uppercase', letterSpacing: '1px' }}>Admin</p>
-            <h1 style={{ color: '#fff', fontSize: '18px', fontWeight: 800, margin: 0 }}>Management Panel</h1>
+    <div style={{ minHeight: '100vh', backgroundColor: '#F5F5F5', display: 'flex', flexDirection: 'column' }}>
+      {/* Admin Top Header */}
+      <header
+        style={{
+          backgroundColor: '#FFFFFF',
+          borderBottom: '1px solid #E5E5E5',
+          position: 'sticky',
+          top: 0,
+          zIndex: 1000,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+        }}
+      >
+        <div className="tm-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '64px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <Link to="/home" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+              <TicketmasterLogo height={24} color="#026CDF" />
+            </Link>
+            <div style={{ width: '1px', height: '20px', backgroundColor: '#E5E5E5' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#EFF6FF', color: '#026CDF', padding: '3px 10px', borderRadius: '4px', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <Shield size={13} /> Enterprise Admin Console
+            </div>
           </div>
-        </div>
-        {/* Tab nav */}
-        <div style={{ display: 'flex', overflowX: 'auto', scrollbarWidth: 'none', gap: '0' }}>
-          {NAV_ITEMS.map(item => (
-            <NavLink key={item.to} to={item.to} end={item.end}
-              style={({ isActive }) => ({
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Link
+              to="/home"
+              style={{
                 display: 'flex',
-                flexDirection: 'column',
                 alignItems: 'center',
                 gap: '4px',
-                padding: '10px 14px',
+                fontSize: '13px',
+                fontWeight: 600,
+                color: '#6B6B6B',
                 textDecoration: 'none',
-                borderBottom: isActive ? '2px solid #fff' : '2px solid transparent',
-                color: isActive ? '#fff' : 'rgba(255,255,255,0.6)',
-                whiteSpace: 'nowrap',
-                flexShrink: 0,
-              })}>
-              {item.icon}
-              <span style={{ fontSize: '10px', fontWeight: 600 }}>{item.label}</span>
-            </NavLink>
-          ))}
+              }}
+            >
+              Exit to Main Marketplace <ExternalLink size={13} />
+            </Link>
+          </div>
         </div>
-      </div>
-      <div style={{ paddingBottom: '40px' }}>
-        <Outlet />
-      </div>
+
+        {/* Sub-Nav Tabs Bar */}
+        <div style={{ borderTop: '1px solid #F0F0F0', backgroundColor: '#FFFFFF' }}>
+          <div className="tm-container" style={{ display: 'flex', gap: '8px', overflowX: 'auto', scrollbarWidth: 'none' }}>
+            {NAV_ITEMS.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                style={({ isActive }) => ({
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '12px 14px',
+                  fontSize: '13px',
+                  fontWeight: isActive ? 700 : 500,
+                  color: isActive ? '#026CDF' : '#6B6B6B',
+                  textDecoration: 'none',
+                  borderBottom: isActive ? '3px solid #026CDF' : '3px solid transparent',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.15s ease',
+                })}
+              >
+                {item.icon}
+                <span>{item.label}</span>
+              </NavLink>
+            ))}
+          </div>
+        </div>
+      </header>
+
+      {/* Main Admin View Container */}
+      <main style={{ flex: 1, padding: '24px 0 40px' }}>
+        <div className="tm-container">
+          <Outlet />
+        </div>
+      </main>
     </div>
   );
 }

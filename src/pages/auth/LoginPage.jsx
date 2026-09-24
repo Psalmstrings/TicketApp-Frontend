@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, Ticket } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, X, CheckCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
+import TicketmasterLogo from '../../components/ui/TicketmasterLogo.jsx';
+import api from '../../lib/axios.js';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -10,143 +12,173 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotSent, setForgotSent] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.email || !form.password) {
-      setError('Please fill in all fields.');
-      return;
-    }
-    setLoading(true);
-    setError('');
-    try {
-      await login(form.email, form.password);
-      navigate('/home', { replace: true });
-    } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Check your credentials.');
-    } finally {
-      setLoading(false);
-    }
+    if (!form.email || !form.password) { setError('Please fill in all fields.'); return; }
+    setLoading(true); setError('');
+    try { await login(form.email, form.password); navigate('/home', { replace: true }); }
+    catch (err) { setError(err.response?.data?.message || 'Login failed. Check your credentials.'); }
+    finally { setLoading(false); }
+  };
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    if (!forgotEmail) return;
+    setForgotLoading(true);
+    try { await api.post('/auth/forgot-password', { email: forgotEmail }); }
+    catch (err) { /* show success for security */ }
+    finally { setForgotSent(true); setForgotLoading(false); }
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f0f1a', display: 'flex', flexDirection: 'column' }}>
-      {/* Header */}
-      <div style={{
-        background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #a855f7 100%)',
-        padding: '60px 24px 40px',
-        textAlign: 'center',
-        position: 'relative',
-        overflow: 'hidden',
-      }}>
-        {/* Background circles */}
-        <div style={{ position: 'absolute', top: -40, right: -40, width: '150px', height: '150px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)' }} />
-        <div style={{ position: 'absolute', bottom: -20, left: -20, width: '100px', height: '100px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)' }} />
+    <div style={{ minHeight: '100vh', background: '#F5F5F5', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 16px' }}>
 
-        <div style={{ width: '64px', height: '64px', background: 'rgba(255,255,255,0.15)', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.2)' }}>
-          <Ticket size={32} color="#fff" />
+      {/* Card */}
+      <div style={{ width: '100%', maxWidth: '420px', background: '#FFFFFF', borderRadius: '12px', border: '1px solid #E5E5E5', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
+
+        {/* Blue brand header */}
+        <div style={{ background: '#026CDF', padding: '32px 32px 28px', textAlign: 'center' }}>
+          <div>
+            <TicketmasterLogo height={36} color="#ffffff" />
+          </div>
+          {/* <h1 style={{ color: '#FFFFFF', fontSize: '24px', fontWeight: 900, margin: '0 0 4px', letterSpacing: '-0.3px' }}>TickApp</h1> */}
+          <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '13px', margin: 0 }}>Your events, your tickets</p>
         </div>
-        <h1 style={{ color: '#fff', fontSize: '28px', fontWeight: 900, margin: '0 0 6px', letterSpacing: '-0.5px' }}>TickApp</h1>
-        <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', margin: 0 }}>Your events, your tickets</p>
-      </div>
 
-      {/* Form */}
-      <div style={{ flex: 1, padding: '32px 24px 40px' }}>
-        <h2 style={{ color: '#e2e8f0', fontSize: '22px', fontWeight: 700, margin: '0 0 6px' }}>Welcome back</h2>
-        <p style={{ color: '#64748b', fontSize: '14px', margin: '0 0 28px' }}>Sign in to continue to TickApp</p>
+        {/* Form body */}
+        <div style={{ padding: '32px' }}>
+          <h2 style={{ color: '#1F1F1F', fontSize: '20px', fontWeight: 700, margin: '0 0 4px' }}>Welcome back</h2>
+          <p style={{ color: '#6B6B6B', fontSize: '14px', margin: '0 0 24px' }}>Sign in to continue to TickApp</p>
 
-        {error && (
-          <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '12px', padding: '12px 14px', marginBottom: '20px', color: '#f87171', fontSize: '13px' }}>
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit}>
-          {/* Email */}
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ color: '#94a3b8', fontSize: '11px', fontWeight: 600, display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Email Address
-            </label>
-            <div style={{ position: 'relative' }}>
-              <div style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }}>
-                <Mail size={18} color="#4b5563" />
-              </div>
-              <input
-                type="email"
-                value={form.email}
-                onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
-                placeholder="you@example.com"
-                autoComplete="email"
-                style={{ width: '100%', padding: '14px 14px 14px 46px', background: '#1a1a2e', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '14px', color: '#e2e8f0', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
-                onFocus={e => e.target.style.borderColor = '#6366f1'}
-                onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.08)'}
-              />
+          {error && (
+            <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', padding: '12px 14px', marginBottom: '18px', color: '#DC2626', fontSize: '13px' }}>
+              {error}
             </div>
-          </div>
+          )}
 
-          {/* Password */}
-          <div style={{ marginBottom: '24px' }}>
-            <label style={{ color: '#94a3b8', fontSize: '11px', fontWeight: 600, display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Password
-            </label>
-            <div style={{ position: 'relative' }}>
-              <div style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }}>
-                <Lock size={18} color="#4b5563" />
+          <form onSubmit={handleSubmit}>
+            {/* Email */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', color: '#1F1F1F', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>Email Address</label>
+              <div style={{ position: 'relative' }}>
+                <Mail size={16} color="#6B6B6B" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                  style={{ width: '100%', padding: '12px 12px 12px 40px', background: '#FFFFFF', border: '1px solid #E5E5E5', borderRadius: '6px', color: '#1F1F1F', fontSize: '14px', outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.15s' }}
+                  onFocus={e => e.target.style.borderColor = '#026CDF'}
+                  onBlur={e => e.target.style.borderColor = '#E5E5E5'}
+                />
               </div>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={form.password}
-                onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
-                placeholder="Your password"
-                autoComplete="current-password"
-                style={{ width: '100%', padding: '14px 48px 14px 46px', background: '#1a1a2e', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '14px', color: '#e2e8f0', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
-                onFocus={e => e.target.style.borderColor = '#6366f1'}
-                onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.08)'}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-              >
-                {showPassword ? <EyeOff size={18} color="#4b5563" /> : <Eye size={18} color="#4b5563" />}
+            </div>
+
+            {/* Password */}
+            <div style={{ marginBottom: '8px' }}>
+              <label style={{ display: 'block', color: '#1F1F1F', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>Password</label>
+              <div style={{ position: 'relative' }}>
+                <Lock size={16} color="#6B6B6B" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={form.password}
+                  onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
+                  placeholder="Your password"
+                  autoComplete="current-password"
+                  style={{ width: '100%', padding: '12px 44px 12px 40px', background: '#FFFFFF', border: '1px solid #E5E5E5', borderRadius: '6px', color: '#1F1F1F', fontSize: '14px', outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.15s' }}
+                  onFocus={e => e.target.style.borderColor = '#026CDF'}
+                  onBlur={e => e.target.style.borderColor = '#E5E5E5'}
+                />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#6B6B6B' }}>
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Forgot password */}
+            <div style={{ textAlign: 'right', marginBottom: '24px' }}>
+              <button type="button" onClick={() => { setShowForgot(true); setForgotSent(false); setForgotEmail(''); }} style={{ background: 'none', border: 'none', color: '#026CDF', fontSize: '13px', fontWeight: 600, cursor: 'pointer', padding: 0 }}>
+                Forgot password?
               </button>
             </div>
-          </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              width: '100%',
-              padding: '15px',
-              background: loading ? '#374151' : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-              border: 'none',
-              borderRadius: '14px',
-              color: '#fff',
-              fontWeight: 700,
-              fontSize: '15px',
-              cursor: loading ? 'wait' : 'pointer',
-              marginBottom: '20px',
-              transition: 'opacity 0.2s',
-            }}
-          >
-            {loading ? 'Signing in...' : 'Sign In'}
-          </button>
-        </form>
+            <button
+              type="submit"
+              disabled={loading}
+              style={{ width: '100%', padding: '13px', background: loading ? '#93C5FD' : '#026CDF', border: 'none', borderRadius: '6px', color: '#FFFFFF', fontWeight: 700, fontSize: '15px', cursor: loading ? 'wait' : 'pointer', transition: 'background 0.15s' }}
+            >
+              {loading ? 'Signing in…' : 'Sign In'}
+            </button>
+          </form>
 
-        <p style={{ textAlign: 'center', color: '#64748b', fontSize: '14px', margin: 0 }}>
-          Don't have an account?{' '}
-          <Link to="/register" style={{ color: '#818cf8', fontWeight: 600, textDecoration: 'none' }}>
-            Create Account
-          </Link>
-        </p>
+          <p style={{ textAlign: 'center', color: '#6B6B6B', fontSize: '14px', margin: '20px 0 0' }}>
+            Don't have an account?{' '}
+            <Link to="/register" style={{ color: '#026CDF', fontWeight: 600, textDecoration: 'none' }}>Create Account</Link>
+          </p>
 
-        {/* Demo credentials hint */}
-        {/* <div style={{ marginTop: '24px', background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)', borderRadius: '12px', padding: '14px', textAlign: 'center' }}>
-          <p style={{ color: '#64748b', fontSize: '12px', margin: '0 0 6px', fontWeight: 600 }}>Admin Demo Account</p>
-          <p style={{ color: '#64748b', fontSize: '11px', margin: 0, fontFamily: 'monospace' }}>admin@tickapp.com / Admin@1234</p>
-        </div> */}
+          {/* Demo hint */}
+          {/* <div style={{ marginTop: '20px', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '8px', padding: '12px 14px', textAlign: 'center' }}>
+            <p style={{ color: '#1E40AF', fontSize: '12px', margin: '0 0 2px', fontWeight: 600 }}>Admin Demo Account</p>
+            <p style={{ color: '#1E40AF', fontSize: '11px', margin: 0, fontFamily: 'monospace' }}>admin@tickapp.com / Admin@1234</p>
+          </div> */}
+        </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      {showForgot && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '24px' }} onClick={() => setShowForgot(false)}>
+          <div style={{ background: '#FFFFFF', borderRadius: '12px', padding: '28px', width: '100%', maxWidth: '400px', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ color: '#1F1F1F', fontSize: '18px', fontWeight: 700, margin: 0 }}>Reset Password</h3>
+              <button onClick={() => setShowForgot(false)} style={{ background: '#F5F5F5', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <X size={16} color="#6B6B6B" />
+              </button>
+            </div>
+
+            {forgotSent ? (
+              <div style={{ textAlign: 'center', padding: '12px 0' }}>
+                <CheckCircle size={48} color="#16A34A" style={{ marginBottom: '12px' }} />
+                <p style={{ color: '#1F1F1F', fontWeight: 600, fontSize: '15px', margin: '0 0 6px' }}>Check your email</p>
+                <p style={{ color: '#6B6B6B', fontSize: '13px', margin: '0 0 20px', lineHeight: '1.5' }}>
+                  If an account exists for <strong>{forgotEmail}</strong>, a reset link has been sent.
+                </p>
+                <button onClick={() => setShowForgot(false)} style={{ padding: '11px 24px', background: '#026CDF', border: 'none', borderRadius: '6px', color: '#FFFFFF', fontWeight: 600, fontSize: '14px', cursor: 'pointer' }}>
+                  Done
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleForgotPassword}>
+                <p style={{ color: '#6B6B6B', fontSize: '13px', margin: '0 0 16px', lineHeight: '1.5' }}>
+                  Enter your email and we'll send you a link to reset your password.
+                </p>
+                <label style={{ display: 'block', color: '#1F1F1F', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>Email Address</label>
+                <div style={{ position: 'relative', marginBottom: '20px' }}>
+                  <Mail size={16} color="#6B6B6B" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                  <input
+                    type="email"
+                    value={forgotEmail}
+                    onChange={e => setForgotEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    required
+                    style={{ width: '100%', padding: '12px 12px 12px 40px', background: '#FFFFFF', border: '1px solid #E5E5E5', borderRadius: '6px', color: '#1F1F1F', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
+                    onFocus={e => e.target.style.borderColor = '#026CDF'}
+                    onBlur={e => e.target.style.borderColor = '#E5E5E5'}
+                  />
+                </div>
+                <button type="submit" disabled={forgotLoading} style={{ width: '100%', padding: '12px', background: '#026CDF', border: 'none', borderRadius: '6px', color: '#FFFFFF', fontWeight: 700, fontSize: '14px', cursor: 'pointer' }}>
+                  {forgotLoading ? 'Sending…' : 'Send Reset Email'}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

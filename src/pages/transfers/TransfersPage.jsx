@@ -1,26 +1,35 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, Inbox, Clock, Check, X, ChevronRight, AlertCircle } from 'lucide-react';
-import api from '../../lib/axios.js';
+import { useNavigate, Link } from 'react-router-dom';
 import AppLayout from '../../components/layout/AppLayout.jsx';
-
-const STATUS_INFO = {
-  PENDING: { color: '#f59e0b', bg: 'rgba(245,158,11,0.15)', label: 'Pending' },
-  ACCEPTED: { color: '#10b981', bg: 'rgba(16,185,129,0.15)', label: 'Accepted' },
-  DECLINED: { color: '#ef4444', bg: 'rgba(239,68,68,0.15)', label: 'Declined' },
-  EXPIRED: { color: '#6b7280', bg: 'rgba(107,114,128,0.15)', label: 'Expired' },
-  CANCELLED: { color: '#6b7280', bg: 'rgba(107,114,128,0.15)', label: 'Cancelled' },
-};
+import TicketmasterSpinner from '../../components/ui/TicketmasterSpinner.jsx';
+import StatusBadge from '../../components/ui/StatusBadge.jsx';
+import { useToast } from '../../components/ui/Toast.jsx';
+import api from '../../lib/axios.js';
+import {
+  Send,
+  Inbox,
+  Clock,
+  Check,
+  X,
+  ChevronLeft,
+  Calendar,
+  MapPin,
+  ShieldCheck,
+  Ticket,
+} from 'lucide-react';
 
 export default function TransfersPage() {
   const navigate = useNavigate();
+  const toast = useToast();
+
   const [tab, setTab] = useState('received');
   const [transfers, setTransfers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
-  const [msg, setMsg] = useState('');
 
-  useEffect(() => { fetchTransfers(); }, []);
+  useEffect(() => {
+    fetchTransfers();
+  }, []);
 
   const fetchTransfers = async () => {
     setLoading(true);
@@ -28,113 +37,189 @@ export default function TransfersPage() {
       const { data } = await api.get('/transfers/my-transfers');
       const list = Array.isArray(data?.data) ? data.data : Array.isArray(data?.transfers) ? data.transfers : Array.isArray(data) ? data : [];
       setTransfers(list);
-    } catch (err) { console.error(err); setTransfers([]); }
-    finally { setLoading(false); }
+    } catch (err) {
+      console.error(err);
+      setTransfers([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAction = async (id, action) => {
     setActionLoading(id + action);
     try {
-      if (action === 'accept') await api.post(`/transfers/${id}/accept`);
-      else await api.post(`/transfers/${id}/decline`);
-      setMsg(action === 'accept' ? 'Transfer accepted! Ticket added to your wallet.' : 'Transfer declined.');
+      if (action === 'accept') {
+        await api.post(`/transfers/${id}/accept`);
+        toast.success('Ticket transfer accepted! Added to My Tickets.');
+      } else {
+        await api.post(`/transfers/${id}/decline`);
+        toast.info('Transfer declined.');
+      }
       fetchTransfers();
     } catch (err) {
-      setMsg(err.response?.data?.message || 'Action failed');
+      toast.error(err.response?.data?.message || 'Action failed.');
     } finally {
       setActionLoading(null);
     }
   };
 
-  const sent = (Array.isArray(transfers) ? transfers : []).filter(t => t?.type === 'SENT');
-  const received = (Array.isArray(transfers) ? transfers : []).filter(t => t?.type === 'RECEIVED');
-  const current = tab === 'sent' ? sent : received;
-
-  const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+  const sent = transfers.filter((t) => t?.type === 'SENT');
+  const received = transfers.filter((t) => t?.type === 'RECEIVED');
+  const currentList = tab === 'sent' ? sent : received;
 
   return (
     <AppLayout>
-      <div style={{ paddingBottom: '80px', minHeight: '100vh' }}>
-        <div style={{ background: 'linear-gradient(135deg, #1e1b4b, #2d1b69)', padding: '48px 16px 0' }}>
-          <button onClick={() => navigate(-1)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', marginBottom: '12px' }}>
-            <ArrowLeft size={18} color="#fff" />
-          </button>
-          <h1 style={{ color: '#fff', fontSize: '22px', fontWeight: 800, margin: '0 0 20px' }}>Transfers</h1>
-          <div style={{ display: 'flex' }}>
-            {['received', 'sent'].map(t => (
-              <button key={t} onClick={() => setTab(t)} style={{ flex: 1, padding: '12px', background: 'none', border: 'none', borderBottom: tab === t ? '2px solid #6366f1' : '2px solid transparent', color: tab === t ? '#6366f1' : 'rgba(255,255,255,0.5)', fontWeight: tab === t ? 600 : 400, fontSize: '13px', cursor: 'pointer', textTransform: 'capitalize' }}>
-                {t === 'received' ? <><Inbox size={14} style={{ marginRight: '4px', verticalAlign: 'middle' }} />Received</> : <><Send size={14} style={{ marginRight: '4px', verticalAlign: 'middle' }} />Sent</>}
-              </button>
-            ))}
+      {/* Header Bar */}
+      <div style={{ backgroundColor: '#FFFFFF', borderBottom: '1px solid #E5E5E5', padding: '28px 0 0' }}>
+        <div className="tm-container">
+          <Link
+            to="/for-you"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              color: '#026CDF',
+              fontSize: '13px',
+              fontWeight: 700,
+              textDecoration: 'none',
+              marginBottom: '12px',
+            }}
+          >
+            <ChevronLeft size={16} /> Back to For You
+          </Link>
+
+          <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#1F1F1F', margin: '0 0 16px 0' }}>
+            Ticket Transfers
+          </h1>
+
+          {/* Tab Navigation */}
+          <div style={{ display: 'flex', gap: '24px', borderBottom: '1px solid #E5E5E5' }}>
+            {[
+              { key: 'received', label: 'Received Transfers', icon: Inbox, count: received.length },
+              { key: 'sent', label: 'Sent Transfers', icon: Send, count: sent.length },
+            ].map((t) => {
+              const Icon = t.icon;
+              const isActive = tab === t.key;
+              return (
+                <button
+                  key={t.key}
+                  onClick={() => setTab(t.key)}
+                  style={{
+                    padding: '12px 0',
+                    border: 'none',
+                    background: 'none',
+                    fontSize: '14px',
+                    fontWeight: isActive ? 700 : 500,
+                    color: isActive ? '#026CDF' : '#6B6B6B',
+                    borderBottom: isActive ? '3px solid #026CDF' : '3px solid transparent',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <Icon size={16} /> {t.label} ({t.count})
+                </button>
+              );
+            })}
           </div>
         </div>
+      </div>
 
-        <div style={{ padding: '16px' }}>
-          {msg && (
-            <div style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '12px', padding: '12px 14px', marginBottom: '14px', color: '#818cf8', fontSize: '13px' }}>
-              {msg}
-            </div>
-          )}
-
-          {loading ? (
-            [1,2,3].map(i => <div key={i} style={{ height: '90px', background: '#1a1a2e', borderRadius: '16px', marginBottom: '12px' }} />)
-          ) : current.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-              {tab === 'received' ? <Inbox size={40} color="#374151" style={{ marginBottom: '12px' }} /> : <Send size={40} color="#374151" style={{ marginBottom: '12px' }} />}
-              <p style={{ color: '#64748b', fontSize: '14px', margin: 0 }}>No {tab} transfers</p>
-            </div>
-          ) : (
-            current.map(transfer => {
-              const status = STATUS_INFO[transfer.status] || { color: '#6b7280', bg: 'rgba(107,114,128,0.15)', label: transfer.status };
+      {/* Main Transfers List */}
+      <div className="tm-container" style={{ padding: '32px 20px', maxWidth: '720px' }}>
+        {loading ? (
+          <div style={{ padding: '60px 0', textAlign: 'center' }}>
+            <TicketmasterSpinner size="md" message="Loading transfer records..." />
+          </div>
+        ) : currentList.length === 0 ? (
+          <div
+            style={{
+              textAlign: 'center',
+              padding: '60px 20px',
+              backgroundColor: '#FFFFFF',
+              borderRadius: '16px',
+              border: '1px solid #E5E5E5',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+            }}
+          >
+            {tab === 'received' ? <Inbox size={36} color="#9E9E9E" style={{ marginBottom: '12px' }} /> : <Send size={36} color="#9E9E9E" style={{ marginBottom: '12px' }} />}
+            <h3 style={{ fontSize: '17px', fontWeight: 800, color: '#1F1F1F', margin: '0 0 6px 0' }}>
+              No {tab} transfer requests
+            </h3>
+            <p style={{ fontSize: '13px', color: '#6B6B6B', margin: 0 }}>
+              {tab === 'received'
+                ? 'When someone transfers an event ticket to you, it will appear here for you to accept.'
+                : 'Tickets you transfer to friends or family will be tracked here.'}
+            </p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {currentList.map((transfer) => {
               const ticket = transfer.ticketId || {};
               const event = ticket.eventId || {};
+              const isPending = transfer.status === 'PENDING';
+
               return (
-                <div key={transfer._id} style={{ background: '#1a1a2e', borderRadius: '16px', padding: '16px', marginBottom: '12px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <div
+                  key={transfer._id}
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: '14px',
+                    border: '1px solid #E5E5E5',
+                    padding: '18px 20px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                  }}
+                >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
                     <div>
-                      <p style={{ color: '#e2e8f0', fontWeight: 600, fontSize: '14px', margin: '0 0 3px' }}>
-                        {event.title || 'Event Ticket'}
-                      </p>
-                      <p style={{ color: '#64748b', fontSize: '12px', margin: 0 }}>
-                        {tab === 'sent' ? `To: ${transfer.recipientName || transfer.recipientEmail || transfer.recipientPhone}` : `From: ${transfer.senderId?.firstName} ${transfer.senderId?.lastName}`}
+                      <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#1F1F1F', margin: '0 0 3px 0' }}>
+                        {event.title || 'Event Admission'}
+                      </h3>
+                      <p style={{ fontSize: '13px', color: '#6B6B6B', margin: 0 }}>
+                        {tab === 'sent'
+                          ? `Recipient: ${transfer.recipientName || transfer.recipientEmail}`
+                          : `Sender: ${transfer.senderId?.firstName || 'A ticket holder'} ${transfer.senderId?.lastName || ''}`}
                       </p>
                     </div>
-                    <span style={{ background: status.bg, color: status.color, padding: '3px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 600 }}>
-                      {status.label}
+                    <StatusBadge status={transfer.status} />
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '12px', color: '#6B6B6B', marginBottom: '14px' }}>
+                    <span>Sec: {ticket.section || 'GA'} • Row: {ticket.row || 'GA'} • Seat: {ticket.seat || 'Open'}</span>
+                    <span>•</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Clock size={12} />
+                      {transfer.createdAt ? new Date(transfer.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}
                     </span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '12px' }}>
-                    <Clock size={11} color="#475569" />
-                    <p style={{ color: '#475569', fontSize: '11px', margin: 0 }}>{formatDate(transfer.createdAt)}</p>
-                    {transfer.expiresAt && transfer.status === 'PENDING' && (
-                      <p style={{ color: '#f59e0b', fontSize: '11px', margin: '0 0 0 8px' }}>
-                        Expires: {formatDate(transfer.expiresAt)}
-                      </p>
-                    )}
-                  </div>
-                  {tab === 'received' && transfer.status === 'PENDING' && (
-                    <div style={{ display: 'flex', gap: '8px' }}>
+
+                  {tab === 'received' && isPending && (
+                    <div style={{ display: 'flex', gap: '10px', borderTop: '1px solid #F0F0F0', paddingTop: '14px' }}>
                       <button
+                        className="btn-primary"
+                        style={{ flex: 2, padding: '10px' }}
+                        disabled={actionLoading === transfer._id + 'accept'}
                         onClick={() => handleAction(transfer._id, 'accept')}
-                        disabled={!!actionLoading}
-                        style={{ flex: 1, padding: '10px', background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', borderRadius: '10px', color: '#fff', fontWeight: 600, fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                        <Check size={14} />
-                        {actionLoading === transfer._id + 'accept' ? '...' : 'Accept'}
+                      >
+                        <Check size={16} /> Accept & Add to Wallet
                       </button>
+
                       <button
+                        className="btn-secondary"
+                        style={{ flex: 1, padding: '10px', color: '#DC2626' }}
+                        disabled={actionLoading === transfer._id + 'decline'}
                         onClick={() => handleAction(transfer._id, 'decline')}
-                        disabled={!!actionLoading}
-                        style={{ flex: 1, padding: '10px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '10px', color: '#ef4444', fontWeight: 600, fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                        <X size={14} />
-                        {actionLoading === transfer._id + 'decline' ? '...' : 'Decline'}
+                      >
+                        <X size={16} /> Decline
                       </button>
                     </div>
                   )}
                 </div>
               );
-            })
-          )}
-        </div>
+            })}
+          </div>
+        )}
       </div>
     </AppLayout>
   );

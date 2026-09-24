@@ -23,6 +23,8 @@ import ProfilePage from './pages/profile/ProfilePage.jsx';
 import NotificationsPage from './pages/notifications/NotificationsPage.jsx';
 import QRScannerPage from './pages/scan/QRScannerPage.jsx';
 
+import ForYouPage from './pages/forYou/ForYouPage.jsx';
+
 // Admin
 import AdminLayout from './pages/admin/AdminLayout.jsx';
 import AdminStatsPage from './pages/admin/AdminStatsPage.jsx';
@@ -38,53 +40,56 @@ export default function App() {
       <BrowserRouter>
         <AuthProvider>
           <ToastProvider>
-          <div style={{
-            maxWidth: '430px',
-            margin: '0 auto',
-            minHeight: '100vh',
-            background: '#0f0f1a',
-            position: 'relative',
-            overflowX: 'hidden',
-          }}>
-          <Routes>
-            {/* Public routes */}
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
+            <div style={{
+              minHeight: '100vh',
+              display: 'flex',
+              flexDirection: 'column',
+              backgroundColor: '#F5F5F5',
+              position: 'relative',
+              overflowX: 'hidden',
+            }}>
+              <Routes>
+                {/* Public routes */}
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
 
-            {/* Root redirect */}
-            <Route path="/" element={<Navigate to="/home" replace />} />
+                {/* Root redirect */}
+                <Route path="/" element={<Navigate to="/home" replace />} />
 
-            {/* Protected routes */}
-            <Route path="/home" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
-            <Route path="/explore" element={<ProtectedRoute><ExplorePage /></ProtectedRoute>} />
-            <Route path="/events/:id" element={<ProtectedRoute><EventDetailPage /></ProtectedRoute>} />
-            <Route path="/create" element={<ProtectedRoute requireApproved><CreateEventPage /></ProtectedRoute>} />
-            <Route path="/my-events" element={<ProtectedRoute><MyEventsPage /></ProtectedRoute>} />
-            <Route path="/tickets" element={<ProtectedRoute><MyTicketsPage /></ProtectedRoute>} />
-            <Route path="/tickets/:id" element={<ProtectedRoute><TicketDetailPage /></ProtectedRoute>} />
-            <Route path="/transfers" element={<ProtectedRoute><TransfersPage /></ProtectedRoute>} />
-            <Route path="/resale" element={<ProtectedRoute><ResalePage /></ProtectedRoute>} />
-            <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-            <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
-            <Route path="/scan" element={<ProtectedRoute><QRScannerPage /></ProtectedRoute>} />
+                {/* Discovery routes (Publicly accessible) */}
+                <Route path="/home" element={<HomePage />} />
+                <Route path="/explore" element={<ExplorePage />} />
+                <Route path="/events/:id" element={<EventDetailPage />} />
 
-            {/* Admin routes */}
-            <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminLayout /></ProtectedRoute>}>
-              <Route index element={<AdminStatsPage />} />
-              <Route path="users" element={<AdminUsersPage />} />
-              <Route path="events" element={<AdminEventsPage />} />
-              <Route path="tickets" element={<AdminTicketsPage />} />
-              <Route path="orders" element={<AdminOrdersPage />} />
-              <Route path="logs" element={<AdminLogsPage />} />
-            </Route>
+                {/* Authenticated user routes */}
+                <Route path="/for-you" element={<ProtectedRoute><ForYouPage /></ProtectedRoute>} />
+                <Route path="/create" element={<ProtectedRoute requireApproved><CreateEventPage /></ProtectedRoute>} />
+                <Route path="/my-events" element={<ProtectedRoute><MyEventsPage /></ProtectedRoute>} />
+                <Route path="/tickets" element={<ProtectedRoute><MyTicketsPage /></ProtectedRoute>} />
+                <Route path="/tickets/:id" element={<ProtectedRoute><TicketDetailPage /></ProtectedRoute>} />
+                <Route path="/transfers" element={<ProtectedRoute><TransfersPage /></ProtectedRoute>} />
+                <Route path="/resale" element={<ProtectedRoute><ResalePage /></ProtectedRoute>} />
+                <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+                <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+                <Route path="/scan" element={<ProtectedRoute><QRScannerPage /></ProtectedRoute>} />
 
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/home" replace />} />
-          </Routes>
-        </div>
-        </ToastProvider>
-      </AuthProvider>
-    </BrowserRouter>
+                {/* Admin routes */}
+                <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminLayout /></ProtectedRoute>}>
+                  <Route index element={<AdminStatsPage />} />
+                  <Route path="users" element={<AdminUsersPage />} />
+                  <Route path="events" element={<AdminEventsPage />} />
+                  <Route path="tickets" element={<AdminTicketsPage />} />
+                  <Route path="orders" element={<AdminOrdersPage />} />
+                  <Route path="logs" element={<AdminLogsPage />} />
+                </Route>
+
+                {/* Fallback */}
+                <Route path="*" element={<Navigate to="/home" replace />} />
+              </Routes>
+            </div>
+          </ToastProvider>
+        </AuthProvider>
+      </BrowserRouter>
     </ErrorBoundary>
   );
 }

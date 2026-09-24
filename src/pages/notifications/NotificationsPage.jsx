@@ -1,31 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Bell, Check, CheckCheck, Ticket, User, Calendar, AlertCircle, Info } from 'lucide-react';
+import { ChevronLeft, Bell, Ticket, Check, AlertCircle, User, Info } from 'lucide-react';
 import api from '../../lib/axios.js';
 import AppLayout from '../../components/layout/AppLayout.jsx';
 
+const TYPE_CONFIG = {
+  TICKET_ISSUED:      { color: '#16A34A', bg: '#F0FDF4' },
+  TRANSFER_RECEIVED:  { color: '#026CDF', bg: '#EFF6FF' },
+  TRANSFER_ACCEPTED:  { color: '#16A34A', bg: '#F0FDF4' },
+  TRANSFER_DECLINED:  { color: '#DC2626', bg: '#FEF2F2' },
+  ACCOUNT_CREATED:    { color: '#026CDF', bg: '#EFF6FF' },
+  ACCOUNT_APPROVED:   { color: '#16A34A', bg: '#F0FDF4' },
+  ACCOUNT_SUSPENDED:  { color: '#DC2626', bg: '#FEF2F2' },
+  RESALE_SOLD:        { color: '#D97706', bg: '#FFF7ED' },
+  RESALE_PURCHASED:   { color: '#16A34A', bg: '#F0FDF4' },
+};
+
 const TYPE_ICON = {
-  TICKET_ISSUED: <Ticket size={18} color="#10b981" />,
-  TRANSFER_RECEIVED: <Bell size={18} color="#6366f1" />,
-  TRANSFER_ACCEPTED: <Check size={18} color="#10b981" />,
-  TRANSFER_DECLINED: <AlertCircle size={18} color="#ef4444" />,
-  ACCOUNT_CREATED: <User size={18} color="#6366f1" />,
-  ACCOUNT_APPROVED: <Check size={18} color="#10b981" />,
-  ACCOUNT_SUSPENDED: <AlertCircle size={18} color="#ef4444" />,
-  RESALE_SOLD: <Ticket size={18} color="#f59e0b" />,
-  RESALE_PURCHASED: <Ticket size={18} color="#10b981" />,
+  TICKET_ISSUED:      <Ticket size={16} />,
+  TRANSFER_RECEIVED:  <Bell size={16} />,
+  TRANSFER_ACCEPTED:  <Check size={16} />,
+  TRANSFER_DECLINED:  <AlertCircle size={16} />,
+  ACCOUNT_CREATED:    <User size={16} />,
+  ACCOUNT_APPROVED:   <Check size={16} />,
+  ACCOUNT_SUSPENDED:  <AlertCircle size={16} />,
+  RESALE_SOLD:        <Ticket size={16} />,
+  RESALE_PURCHASED:   <Ticket size={16} />,
 };
 
 function groupByDate(notifications) {
   const groups = {};
-  const today = new Date();
-  today.setHours(0,0,0,0);
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
   (Array.isArray(notifications) ? notifications : []).forEach(n => {
-    const d = new Date(n.createdAt);
-    d.setHours(0,0,0,0);
+    const d = new Date(n.createdAt); d.setHours(0, 0, 0, 0);
     let key;
     if (d.getTime() === today.getTime()) key = 'Today';
     else if (d.getTime() === yesterday.getTime()) key = 'Yesterday';
@@ -82,59 +90,101 @@ export default function NotificationsPage() {
 
   return (
     <AppLayout>
-      <div style={{ paddingBottom: '80px', minHeight: '100vh' }}>
-        <div style={{ background: 'linear-gradient(135deg, #1e1b4b, #2d1b69)', padding: '48px 16px 20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <button onClick={() => navigate(-1)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                <ArrowLeft size={18} color="#fff" />
-              </button>
-              <h1 style={{ color: '#fff', fontSize: '20px', fontWeight: 800, margin: 0 }}>Notifications</h1>
+      <div style={{ background: '#F5F5F5', minHeight: '100vh', paddingBottom: '80px' }}>
+
+        {/* Header */}
+        <div style={{ background: '#FFFFFF', borderBottom: '1px solid #E5E5E5', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <button onClick={() => navigate(-1)} style={{ background: '#F5F5F5', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+              <ChevronLeft size={20} color="#1F1F1F" />
+            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h1 style={{ color: '#1F1F1F', fontSize: '18px', fontWeight: 800, margin: 0 }}>Notifications</h1>
+              {unreadCount > 0 && (
+                <span style={{ background: '#026CDF', color: '#FFFFFF', fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px', lineHeight: '18px' }}>
+                  {unreadCount}
+                </span>
+              )}
             </div>
-            {unreadCount > 0 && (
-              <button onClick={markAllRead} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '10px', padding: '8px 12px', color: '#e2e8f0', fontSize: '12px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <CheckCheck size={14} />
-                Mark all read
-              </button>
-            )}
           </div>
+          {unreadCount > 0 && (
+            <button onClick={markAllRead} style={{ background: 'none', border: 'none', color: '#026CDF', fontSize: '13px', fontWeight: 600, cursor: 'pointer', padding: '4px 8px' }}>
+              Mark all read
+            </button>
+          )}
         </div>
 
-        <div style={{ padding: '12px 16px' }}>
-          {loading ? (
-            [1,2,3,4].map(i => <div key={i} style={{ height: '72px', background: '#1a1a2e', borderRadius: '14px', marginBottom: '8px' }} />)
-          ) : !Array.isArray(notifications) || notifications.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-              <Bell size={40} color="#374151" style={{ marginBottom: '12px' }} />
-              <p style={{ color: '#64748b', fontSize: '16px', fontWeight: 600, margin: '0 0 6px' }}>No notifications</p>
-              <p style={{ color: '#374151', fontSize: '13px', margin: 0 }}>You're all caught up!</p>
+        <div style={{ padding: '16px', maxWidth: '640px', margin: '0 auto' }}>
+
+          {/* Loading */}
+          {loading && (
+            <div style={{ textAlign: 'center', padding: '60px 0' }}>
+              <div style={{ width: '32px', height: '32px', border: '3px solid #E5E5E5', borderTopColor: '#026CDF', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px' }} />
+              <p style={{ color: '#6B6B6B', fontSize: '14px', margin: 0 }}>Loading notifications…</p>
+              <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
             </div>
-          ) : (
-            Object.entries(groups).map(([date, items]) => (
-              <div key={date}>
-                <p style={{ color: '#475569', fontSize: '12px', fontWeight: 600, margin: '12px 0 8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  {date}
-                </p>
-                {items.map(n => (
-                  <div key={n._id}
-                    onClick={() => !n.read && markRead(n._id)}
-                    style={{ background: n.read ? '#1a1a2e' : 'rgba(99,102,241,0.06)', borderRadius: '14px', padding: '14px', marginBottom: '8px', border: `1px solid ${n.read ? 'rgba(255,255,255,0.05)' : 'rgba(99,102,241,0.2)'}`, display: 'flex', gap: '12px', cursor: n.read ? 'default' : 'pointer', position: 'relative' }}>
-                    <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(99,102,241,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      {TYPE_ICON[n.type] || <Info size={18} color="#6366f1" />}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <p style={{ color: '#e2e8f0', fontWeight: n.read ? 500 : 700, fontSize: '13px', margin: '0 0 3px' }}>{n.title}</p>
-                      <p style={{ color: '#64748b', fontSize: '12px', margin: '0 0 4px', lineHeight: '1.4' }}>{n.message}</p>
-                      <p style={{ color: '#374151', fontSize: '11px', margin: 0 }}>{timeAgo(n.createdAt)}</p>
-                    </div>
-                    {!n.read && (
-                      <div style={{ position: 'absolute', top: '14px', right: '14px', width: '8px', height: '8px', background: '#6366f1', borderRadius: '50%' }} />
-                    )}
-                  </div>
-                ))}
-              </div>
-            ))
           )}
+
+          {/* Empty state */}
+          {!loading && notifications.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '80px 20px' }}>
+              <div style={{ width: '64px', height: '64px', background: '#F3F4F6', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                <Bell size={28} color="#9CA3AF" />
+              </div>
+              <h3 style={{ color: '#1F1F1F', fontSize: '16px', fontWeight: 700, margin: '0 0 6px' }}>No notifications yet</h3>
+              <p style={{ color: '#6B6B6B', fontSize: '13px', margin: 0 }}>Activity and updates will appear here.</p>
+            </div>
+          )}
+
+          {/* Grouped notifications */}
+          {!loading && Object.entries(groups).map(([dateLabel, items]) => (
+            <div key={dateLabel} style={{ marginBottom: '20px' }}>
+              <p style={{ color: '#6B6B6B', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px 2px' }}>
+                {dateLabel}
+              </p>
+              <div style={{ background: '#FFFFFF', border: '1px solid #E5E5E5', borderRadius: '10px', overflow: 'hidden' }}>
+                {items.map((n, idx) => {
+                  const cfg = TYPE_CONFIG[n.type] || { color: '#6B6B6B', bg: '#F3F4F6' };
+                  const icon = TYPE_ICON[n.type] || <Info size={16} />;
+                  return (
+                    <button
+                      key={n._id}
+                      onClick={() => !n.read && markRead(n._id)}
+                      style={{
+                        width: '100%', display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '14px 16px',
+                        background: n.read ? '#FFFFFF' : '#FAFBFF',
+                        border: 'none', cursor: 'pointer', textAlign: 'left',
+                        borderBottom: idx < items.length - 1 ? '1px solid #F3F4F6' : 'none',
+                        borderLeft: !n.read ? '3px solid #026CDF' : '3px solid transparent',
+                        transition: 'background 0.1s',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#F9FAFB'}
+                      onMouseLeave={e => e.currentTarget.style.background = n.read ? '#FFFFFF' : '#FAFBFF'}
+                    >
+                      {/* Icon circle */}
+                      <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: cfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: cfg.color }}>
+                        {icon}
+                      </div>
+                      {/* Content */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ color: '#1F1F1F', fontSize: '13px', fontWeight: n.read ? 400 : 600, margin: '0 0 2px', lineHeight: '1.4' }}>
+                          {n.message || n.title || 'Notification'}
+                        </p>
+                        {n.body && n.body !== n.message && (
+                          <p style={{ color: '#6B6B6B', fontSize: '12px', margin: '0 0 4px', lineHeight: '1.4' }}>{n.body}</p>
+                        )}
+                        <p style={{ color: '#9CA3AF', fontSize: '11px', margin: 0 }}>{timeAgo(n.createdAt)}</p>
+                      </div>
+                      {/* Unread dot */}
+                      {!n.read && (
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#026CDF', flexShrink: 0, marginTop: '4px' }} />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </AppLayout>

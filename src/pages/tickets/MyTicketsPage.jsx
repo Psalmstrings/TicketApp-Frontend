@@ -1,95 +1,45 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Ticket, ChevronRight, Clock, MapPin, Calendar, ArrowLeft } from 'lucide-react';
-import api from '../../lib/axios.js';
 import AppLayout from '../../components/layout/AppLayout.jsx';
+import TicketCard from '../../components/tickets/TicketCard.jsx';
+import DigitalTicket from '../../components/tickets/DigitalTicket.jsx';
+import TicketmasterSpinner from '../../components/ui/TicketmasterSpinner.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
+import { useToast } from '../../components/ui/Toast.jsx';
+import api from '../../lib/axios.js';
+import { Ticket, ArrowRight, Send, DollarSign, X } from 'lucide-react';
 
-const FILTERS = [
+const TABS = [
   { key: 'upcoming', label: 'Upcoming' },
   { key: 'past', label: 'Past' },
   { key: 'transferred', label: 'Transferred' },
+  { key: 'listed', label: 'Resale Listings' },
 ];
 
-const STATUS_COLORS = {
-  SOLD: { bg: 'rgba(16,185,129,0.12)', color: '#10b981', label: 'Active' },
-  AVAILABLE: { bg: 'rgba(99,102,241,0.12)', color: '#6366f1', label: 'Available' },
-  USED: { bg: 'rgba(107,114,128,0.12)', color: '#6b7280', label: 'Used' },
-  TRANSFERRED: { bg: 'rgba(139,92,246,0.12)', color: '#8b5cf6', label: 'Transferred' },
-  LISTED: { bg: 'rgba(245,158,11,0.12)', color: '#f59e0b', label: 'Listed' },
-  CANCELLED: { bg: 'rgba(239,68,68,0.12)', color: '#ef4444', label: 'Cancelled' },
-  TRANSFER_PENDING: { bg: 'rgba(245,158,11,0.12)', color: '#f59e0b', label: 'Transfer Pending' },
-};
-
-function TicketCard({ ticket }) {
-  const event = ticket.eventId || {};
-  const tt = ticket.ticketTypeId || {};
-  const status = STATUS_COLORS[ticket.status] || { bg: 'rgba(107,114,128,0.12)', color: '#6b7280', label: ticket.status };
-
-  const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
-
-  return (
-    <Link to={`/tickets/${ticket._id}`} style={{ textDecoration: 'none' }}>
-      <div style={{
-        background: '#1a1a2e',
-        borderRadius: '16px',
-        overflow: 'hidden',
-        border: '1px solid rgba(255,255,255,0.06)',
-        marginBottom: '12px',
-        display: 'flex',
-        height: '90px',
-      }}>
-        {/* Left accent stripe */}
-        <div style={{
-          width: '5px',
-          background: 'linear-gradient(to bottom, #6366f1, #8b5cf6)',
-          flexShrink: 0,
-        }} />
-        {/* Cover image */}
-        <div style={{
-          width: '80px',
-          flexShrink: 0,
-          background: event.coverImage?.url
-            ? `url(${event.coverImage.url}) center/cover`
-            : 'linear-gradient(135deg, #4f46e5, #7c3aed)',
-        }} />
-        {/* Info */}
-        <div style={{ padding: '10px 12px', flex: 1, overflow: 'hidden' }}>
-          <p style={{ color: '#e2e8f0', fontWeight: 700, fontSize: '13px', margin: '0 0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {event.title || 'Event'}
-          </p>
-          <p style={{ color: '#64748b', fontSize: '11px', margin: '0 0 6px' }}>
-            {tt.name || 'General'} • #{ticket.ticketNumber?.slice(-6)}
-          </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <Clock size={10} color="#475569" />
-            <p style={{ color: '#475569', fontSize: '10px', margin: 0 }}>
-              {formatDate(event.startDate)}
-            </p>
-          </div>
-        </div>
-        {/* Status + arrow */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center', padding: '10px 12px', gap: '6px' }}>
-          <span style={{
-            background: status.bg,
-            color: status.color,
-            borderRadius: '8px',
-            padding: '3px 8px',
-            fontSize: '10px',
-            fontWeight: 600,
-          }}>
-            {status.label}
-          </span>
-          <ChevronRight size={14} color="#4b5563" />
-        </div>
-      </div>
-    </Link>
-  );
-}
-
 export default function MyTicketsPage() {
+  const { user } = useAuth();
+  const toast = useToast();
+  const navigate = useNavigate();
+
   const [filter, setFilter] = useState('upcoming');
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Digital Ticket Modal & Actions
+  const [activeDigitalTicket, setActiveDigitalTicket] = useState(null);
+  const [transferTicketTarget, setTransferTicketTarget] = useState(null);
+  const [resaleTicketTarget, setResaleTicketTarget] = useState(null);
+
+  // Transfer form
+  const [recipientEmail, setRecipientEmail] = useState('');
+  const [recipientName, setRecipientName] = useState('');
+  const [submittingTransfer, setSubmittingTransfer] = useState(false);
+
+  // Resale form
+  const [resalePrice, setResalePrice] = useState('');
+  const [submittingResale, setSubmittingResale] = useState(false);
+
+  const isApproved = user?.status === 'APPROVED' || user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
 
   useEffect(() => {
     fetchTickets();
@@ -99,7 +49,7 @@ export default function MyTicketsPage() {
     setLoading(true);
     try {
       const { data } = await api.get(`/tickets/my-tickets?filter=${filter}`);
-      const list = Array.isArray(data?.data) ? data.data : Array.isArray(data?.tickets) ? data.tickets : Array.isArray(data) ? data : [];
+      const list = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
       setTickets(list);
     } catch (err) {
       console.error(err);
@@ -109,79 +59,336 @@ export default function MyTicketsPage() {
     }
   };
 
+  const handleTransferSubmit = async (e) => {
+    e.preventDefault();
+    if (!recipientEmail.trim()) {
+      toast.error('Recipient email is required.');
+      return;
+    }
+    setSubmittingTransfer(true);
+    try {
+      await api.post('/transfers', {
+        ticketId: transferTicketTarget._id || transferTicketTarget.id,
+        recipientEmail: recipientEmail.trim(),
+        recipientName: recipientName.trim(),
+      });
+      toast.success('Transfer initiated! Recipient will receive an invitation to accept.');
+      setTransferTicketTarget(null);
+      setRecipientEmail('');
+      setRecipientName('');
+      fetchTickets();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Transfer failed.');
+    } finally {
+      setSubmittingTransfer(false);
+    }
+  };
+
+  const handleResaleSubmit = async (e) => {
+    e.preventDefault();
+    const price = parseFloat(resalePrice);
+    if (isNaN(price) || price <= 0) {
+      toast.error('Enter a valid resale price.');
+      return;
+    }
+    setSubmittingResale(true);
+    try {
+      await api.post('/resale', {
+        ticketId: resaleTicketTarget._id || resaleTicketTarget.id,
+        price,
+      });
+      toast.success('Ticket listed on the Resale Marketplace!');
+      setResaleTicketTarget(null);
+      setResalePrice('');
+      fetchTickets();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Listing failed.');
+    } finally {
+      setSubmittingResale(false);
+    }
+  };
+
   return (
     <AppLayout>
-      <div style={{ paddingBottom: '80px', minHeight: '100vh' }}>
-        {/* Header */}
-        <div style={{
-          background: 'linear-gradient(135deg, #1e1b4b, #2d1b69)',
-          padding: '48px 16px 0',
-        }}>
-          <h1 style={{ color: '#fff', fontSize: '22px', fontWeight: 800, margin: '0 0 20px' }}>
+      {/* Header Bar */}
+      <div style={{ backgroundColor: '#FFFFFF', borderBottom: '1px solid #E5E5E5', padding: '28px 0 0' }}>
+        <div className="tm-container">
+          <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#1F1F1F', margin: '0 0 16px 0' }}>
             My Tickets
           </h1>
-          {/* Filter Tabs */}
-          <div style={{ display: 'flex', gap: '0', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-            {FILTERS.map(f => (
-              <button
-                key={f.key}
-                onClick={() => setFilter(f.key)}
-                style={{
-                  flex: 1,
-                  padding: '12px 8px',
-                  background: 'none',
-                  border: 'none',
-                  borderBottom: filter === f.key ? '2px solid #6366f1' : '2px solid transparent',
-                  color: filter === f.key ? '#6366f1' : 'rgba(255,255,255,0.5)',
-                  fontWeight: filter === f.key ? 600 : 400,
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                }}
-              >
-                {f.label}
-              </button>
-            ))}
+
+          {/* Navigation Tabs */}
+          <div style={{ display: 'flex', gap: '24px', borderBottom: '1px solid #E5E5E5' }}>
+            {TABS.map((t) => {
+              const isActive = filter === t.key;
+              return (
+                <button
+                  key={t.key}
+                  onClick={() => setFilter(t.key)}
+                  style={{
+                    padding: '12px 0',
+                    border: 'none',
+                    background: 'none',
+                    fontSize: '14px',
+                    fontWeight: isActive ? 700 : 500,
+                    color: isActive ? '#026CDF' : '#6B6B6B',
+                    borderBottom: isActive ? '3px solid #026CDF' : '3px solid transparent',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {t.label}
+                </button>
+              );
+            })}
           </div>
         </div>
-
-        {/* Content */}
-        <div style={{ padding: '16px' }}>
-          {loading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {[1,2,3].map(i => (
-                <div key={i} style={{ height: '90px', background: '#1a1a2e', borderRadius: '16px', animation: 'pulse 1.5s infinite' }} />
-              ))}
-            </div>
-          ) : !Array.isArray(tickets) || tickets.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-              <Ticket size={40} color="#374151" style={{ marginBottom: '12px' }} />
-              <p style={{ color: '#64748b', fontSize: '16px', fontWeight: 600, margin: '0 0 6px' }}>
-                No {filter} tickets
-              </p>
-              <p style={{ color: '#374151', fontSize: '13px', margin: '0 0 20px' }}>
-                {filter === 'upcoming' ? 'Browse events to get your first ticket!' : 'Nothing here yet.'}
-              </p>
-              {filter === 'upcoming' && (
-                <Link to="/explore" style={{
-                  display: 'inline-block',
-                  padding: '12px 24px',
-                  background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                  borderRadius: '12px',
-                  color: '#fff',
-                  fontWeight: 600,
-                  fontSize: '14px',
-                  textDecoration: 'none',
-                }}>
-                  Browse Events
-                </Link>
-              )}
-            </div>
-          ) : (
-            (Array.isArray(tickets) ? tickets : []).map(ticket => <TicketCard key={ticket._id} ticket={ticket} />)
-          )}
-        </div>
       </div>
+
+      {/* Main Ticket Wallet Content Area */}
+      <div className="tm-container" style={{ padding: '32px 20px', maxWidth: '840px' }}>
+        {loading ? (
+          <div style={{ padding: '60px 0', textAlign: 'center' }}>
+            <TicketmasterSpinner size="md" message="Loading your ticket wallet..." />
+          </div>
+        ) : tickets.length === 0 ? (
+          <div
+            style={{
+              textAlign: 'center',
+              padding: '60px 20px',
+              backgroundColor: '#FFFFFF',
+              borderRadius: '16px',
+              border: '1px solid #E5E5E5',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+            }}
+          >
+            <div
+              style={{
+                width: '60px',
+                height: '60px',
+                borderRadius: '50%',
+                backgroundColor: '#EBF3FD',
+                color: '#026CDF',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px',
+              }}
+            >
+              <Ticket size={28} />
+            </div>
+            <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#1F1F1F', margin: '0 0 6px 0' }}>
+              No {filter} tickets found
+            </h3>
+            <p style={{ fontSize: '14px', color: '#6B6B6B', margin: '0 0 20px 0', lineHeight: 1.5 }}>
+              {filter === 'upcoming'
+                ? "You don't have any upcoming tickets yet. Browse trending concerts, sports matches, and shows."
+                : `No tickets currently categorized under "${filter}".`}
+            </p>
+
+            {filter === 'upcoming' && (
+              <Link to="/explore" className="btn-primary" style={{ padding: '12px 24px', borderRadius: '8px' }}>
+                Browse Live Events <ArrowRight size={16} />
+              </Link>
+            )}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {tickets.map((t) => (
+              <TicketCard
+                key={t._id || t.id}
+                ticket={t}
+                variant="wallet"
+                onTransfer={(ticket) => {
+                  if (!isApproved) {
+                    toast.error('Account approval required to transfer tickets.');
+                    return;
+                  }
+                  setTransferTicketTarget(ticket);
+                }}
+                onResale={(ticket) => {
+                  if (!isApproved) {
+                    toast.error('Account approval required to resell tickets.');
+                    return;
+                  }
+                  setResaleTicketTarget(ticket);
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ===== DIGITAL TICKET MODAL ===== */}
+      {activeDigitalTicket && (
+        <DigitalTicket
+          ticket={activeDigitalTicket}
+          onClose={() => setActiveDigitalTicket(null)}
+          onTransfer={(t) => {
+            setActiveDigitalTicket(null);
+            setTransferTicketTarget(t);
+          }}
+          onResale={(t) => {
+            setActiveDigitalTicket(null);
+            setResaleTicketTarget(t);
+          }}
+          canTransfer={isApproved}
+          canResell={isApproved}
+        />
+      )}
+
+      {/* ===== TRANSFER MODAL ===== */}
+      {transferTicketTarget && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.65)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 3000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px',
+          }}
+          onClick={() => setTransferTicketTarget(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: '16px',
+              padding: '24px',
+              maxWidth: '460px',
+              width: '100%',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Send size={20} color="#026CDF" />
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>Transfer Ticket</h3>
+              </div>
+              <button
+                onClick={() => setTransferTicketTarget(null)}
+                style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#6B6B6B' }}
+              >
+                ×
+              </button>
+            </div>
+
+            <p style={{ fontSize: '13px', color: '#6B6B6B', margin: '0 0 16px 0', lineHeight: 1.5 }}>
+              Transfer ticket <strong>#{transferTicketTarget.ticketNumber}</strong> safely. The recipient will be notified and can accept directly.
+            </p>
+
+            <form onSubmit={handleTransferSubmit}>
+              <div style={{ marginBottom: '14px' }}>
+                <label className="input-label">Recipient Name (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Alex Smith"
+                  value={recipientName}
+                  onChange={(e) => setRecipientName(e.target.value)}
+                  className="input"
+                />
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <label className="input-label">Recipient Email Address *</label>
+                <input
+                  type="email"
+                  placeholder="friend@example.com"
+                  value={recipientEmail}
+                  onChange={(e) => setRecipientEmail(e.target.value)}
+                  className="input"
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={submittingTransfer}
+                className="btn-primary"
+                style={{ width: '100%', padding: '13px' }}
+              >
+                {submittingTransfer ? 'Sending Invitation...' : 'Send Transfer Invitation'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ===== RESALE MODAL ===== */}
+      {resaleTicketTarget && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.65)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 3000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px',
+          }}
+          onClick={() => setResaleTicketTarget(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: '16px',
+              padding: '24px',
+              maxWidth: '460px',
+              width: '100%',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <DollarSign size={20} color="#EA580C" />
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>List on Resale Marketplace</h3>
+              </div>
+              <button
+                onClick={() => setResaleTicketTarget(null)}
+                style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#6B6B6B' }}
+              >
+                ×
+              </button>
+            </div>
+
+            <p style={{ fontSize: '13px', color: '#6B6B6B', margin: '0 0 16px 0', lineHeight: 1.5 }}>
+              List ticket <strong>#{resaleTicketTarget.ticketNumber}</strong> on Ticketmaster's verified exchange. When purchased, payment is credited to your balance.
+            </p>
+
+            <form onSubmit={handleResaleSubmit}>
+              <div style={{ marginBottom: '20px' }}>
+                <label className="input-label">Resale Listing Price ($) *</label>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  placeholder="e.g. 85"
+                  value={resalePrice}
+                  onChange={(e) => setResalePrice(e.target.value)}
+                  className="input"
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={submittingResale}
+                className="btn-primary"
+                style={{ width: '100%', padding: '13px', backgroundColor: '#EA580C' }}
+              >
+                {submittingResale ? 'Listing Ticket...' : 'Confirm Resale Listing'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }

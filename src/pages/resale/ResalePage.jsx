@@ -1,20 +1,34 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ShoppingBag, Ticket, MapPin, Clock, Check, X, DollarSign } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext.jsx';
-import api from '../../lib/axios.js';
+import { useNavigate, Link } from 'react-router-dom';
 import AppLayout from '../../components/layout/AppLayout.jsx';
+import TicketmasterSpinner from '../../components/ui/TicketmasterSpinner.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
+import { useToast } from '../../components/ui/Toast.jsx';
+import api from '../../lib/axios.js';
+import {
+  DollarSign,
+  ShieldCheck,
+  Calendar,
+  MapPin,
+  Clock,
+  ArrowRight,
+  ShoppingBag,
+  ChevronLeft,
+  Tag,
+} from 'lucide-react';
 
 export default function ResalePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const toast = useToast();
+
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [buyingId, setBuyingId] = useState(null);
-  const [msg, setMsg] = useState('');
-  const [error, setError] = useState('');
 
-  useEffect(() => { fetchListings(); }, []);
+  useEffect(() => {
+    fetchListings();
+  }, []);
 
   const fetchListings = async () => {
     setLoading(true);
@@ -22,103 +36,186 @@ export default function ResalePage() {
       const { data } = await api.get('/resale');
       const list = Array.isArray(data?.data) ? data.data : Array.isArray(data?.listings) ? data.listings : Array.isArray(data) ? data : [];
       setListings(list);
-    } catch (err) { console.error(err); setListings([]); }
-    finally { setLoading(false); }
+    } catch (err) {
+      console.error(err);
+      setListings([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleBuy = async (listingId) => {
-    if (!user) { navigate('/login'); return; }
+    if (!user) {
+      navigate('/login');
+      return;
+    }
     setBuyingId(listingId);
-    setError('');
     try {
       await api.post(`/resale/${listingId}/buy`);
-      setMsg('Ticket purchased! Check your wallet.');
+      toast.success('Ticket purchased via Verified Resale! Check My Tickets.');
       fetchListings();
     } catch (err) {
-      setError(err.response?.data?.message || 'Purchase failed');
+      toast.error(err.response?.data?.message || 'Purchase failed.');
     } finally {
       setBuyingId(null);
     }
   };
 
-  const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
-
   return (
     <AppLayout>
-      <div style={{ paddingBottom: '80px', minHeight: '100vh' }}>
-        <div style={{ background: 'linear-gradient(135deg, #1e1b4b, #2d1b69)', padding: '48px 16px 24px' }}>
-          <button onClick={() => navigate(-1)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', marginBottom: '12px' }}>
-            <ArrowLeft size={18} color="#fff" />
-          </button>
-          <h1 style={{ color: '#fff', fontSize: '22px', fontWeight: 800, margin: 0 }}>Resale Market</h1>
-          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', margin: '6px 0 0' }}>Tickets listed by other users</p>
-        </div>
+      {/* Header Bar */}
+      <div style={{ backgroundColor: '#FFFFFF', borderBottom: '1px solid #E5E5E5', padding: '28px 0 20px' }}>
+        <div className="tm-container">
+          <Link
+            to="/for-you"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              color: '#026CDF',
+              fontSize: '13px',
+              fontWeight: 700,
+              textDecoration: 'none',
+              marginBottom: '12px',
+            }}
+          >
+            <ChevronLeft size={16} /> Back to For You
+          </Link>
 
-        <div style={{ padding: '16px' }}>
-          {msg && <div style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '12px', padding: '12px', marginBottom: '14px', color: '#10b981', fontSize: '13px', display: 'flex', gap: '8px', alignItems: 'center' }}><Check size={16} />{msg}</div>}
-          {error && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '12px', padding: '12px', marginBottom: '14px', color: '#f87171', fontSize: '13px' }}>{error}</div>}
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <span style={{ backgroundColor: '#FFF7ED', color: '#EA580C', border: '1px solid #FED7AA', fontSize: '11px', fontWeight: 800, padding: '3px 8px', borderRadius: '4px', textTransform: 'uppercase' }}>
+                  Verified Exchange
+                </span>
+                <span style={{ fontSize: '12px', color: '#059669', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <ShieldCheck size={14} /> 100% Guaranteed Entry
+                </span>
+              </div>
 
-          {loading ? (
-            [1,2,3].map(i => <div key={i} style={{ height: '120px', background: '#1a1a2e', borderRadius: '16px', marginBottom: '12px' }} />)
-          ) : !Array.isArray(listings) || listings.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-              <ShoppingBag size={40} color="#374151" style={{ marginBottom: '12px' }} />
-              <p style={{ color: '#64748b', fontSize: '16px', fontWeight: 600, margin: '0 0 6px' }}>No listings available</p>
-              <p style={{ color: '#374151', fontSize: '13px', margin: 0 }}>Check back later for resale tickets</p>
+              <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#1F1F1F', margin: 0 }}>
+                Ticketmaster Resale Marketplace
+              </h1>
+              <p style={{ fontSize: '13px', color: '#6B6B6B', margin: '4px 0 0' }}>
+                Verified tickets listed directly by fans and event attendees.
+              </p>
             </div>
-          ) : (
-            (Array.isArray(listings) ? listings : []).map(listing => {
-              const ticket = listing.ticketId || {};
-              const event = listing.eventId || {};
-              const tt = ticket.ticketTypeId || {};
-              const isMine = user && listing.sellerId?._id === user.id;
+
+            <Link to="/tickets" className="btn-secondary" style={{ padding: '10px 18px', fontSize: '13px' }}>
+              <DollarSign size={15} /> Sell Your Tickets
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Listings */}
+      <div className="tm-container" style={{ padding: '32px 20px', maxWidth: '840px' }}>
+        {loading ? (
+          <div style={{ padding: '60px 0', textAlign: 'center' }}>
+            <TicketmasterSpinner size="md" message="Loading resale exchange..." />
+          </div>
+        ) : listings.length === 0 ? (
+          <div
+            style={{
+              textAlign: 'center',
+              padding: '60px 20px',
+              backgroundColor: '#FFFFFF',
+              borderRadius: '16px',
+              border: '1px solid #E5E5E5',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+            }}
+          >
+            <ShoppingBag size={40} color="#D1D5DB" style={{ marginBottom: '12px' }} />
+            <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#1F1F1F', margin: '0 0 6px 0' }}>
+              No resale tickets currently listed
+            </h3>
+            <p style={{ fontSize: '14px', color: '#6B6B6B', margin: '0 0 20px 0', lineHeight: 1.5 }}>
+              Check back frequently as fans post last-minute verified tickets, or list an extra ticket you own.
+            </p>
+            <Link to="/tickets" className="btn-primary" style={{ padding: '12px 24px', borderRadius: '8px' }}>
+              Sell My Extra Tickets
+            </Link>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {listings.map((item) => {
+              const ticket = item.ticketId || {};
+              const event = item.eventId || ticket.eventId || {};
+              const isMine = user && (item.sellerId?._id === user.id || item.sellerId === user.id);
+
+              const dateStr = event.startDate
+                ? new Date(event.startDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+                : 'Date TBA';
+
               return (
-                <div key={listing._id} style={{ background: '#1a1a2e', borderRadius: '16px', padding: '16px', marginBottom: '12px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-                    <div style={{ flex: 1 }}>
-                      <p style={{ color: '#e2e8f0', fontWeight: 700, fontSize: '15px', margin: '0 0 4px' }}>{event.title || 'Event Ticket'}</p>
-                      <p style={{ color: '#94a3b8', fontSize: '12px', margin: '0 0 6px' }}>
-                        {tt.name || 'General'} {ticket.section && ticket.section !== 'General' ? `· ${ticket.section}` : ''}
-                      </p>
-                      <div style={{ display: 'flex', gap: '12px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-                          <MapPin size={11} color="#6366f1" />
-                          <span style={{ color: '#64748b', fontSize: '11px' }}>{event.venue || '—'}</span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-                          <Clock size={11} color="#475569" />
-                          <span style={{ color: '#475569', fontSize: '11px' }}>{formatDate(event.startDate)}</span>
-                        </div>
-                      </div>
+                <div
+                  key={item._id}
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: '16px',
+                    border: '1px solid #E5E5E5',
+                    padding: '20px',
+                    boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '20px',
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: '260px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                      <span style={{ backgroundColor: '#EFF6FF', color: '#026CDF', fontSize: '11px', fontWeight: 800, padding: '2px 8px', borderRadius: '4px', textTransform: 'uppercase' }}>
+                        Fan Resale
+                      </span>
+                      <span style={{ fontSize: '12px', color: '#6B6B6B' }}>
+                        Listed by: {item.sellerId?.firstName || 'Verified Fan'}
+                      </span>
                     </div>
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <p style={{ color: '#f59e0b', fontWeight: 800, fontSize: '18px', margin: '0 0 2px' }}>
-                        ₦{listing.price?.toLocaleString()}
-                      </p>
-                      {listing.originalPrice > 0 && (
-                        <p style={{ color: '#475569', fontSize: '11px', margin: 0, textDecoration: 'line-through' }}>
-                          ₦{listing.originalPrice?.toLocaleString()}
-                        </p>
-                      )}
+
+                    <h3 style={{ fontSize: '17px', fontWeight: 800, color: '#1F1F1F', margin: '0 0 4px 0' }}>
+                      {event.title || 'Event Ticket'}
+                    </h3>
+
+                    <p style={{ fontSize: '13px', color: '#6B6B6B', margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Calendar size={14} color="#026CDF" /> {dateStr} • {event.venue || 'Venue'}
+                    </p>
+
+                    <div style={{ display: 'flex', gap: '12px', fontSize: '12px', fontWeight: 600, color: '#4B4B4B' }}>
+                      <span>SEC: {ticket.section || 'GA'}</span>
+                      <span>ROW: {ticket.row || 'GA'}</span>
+                      <span>SEAT: {ticket.seat || 'Open'}</span>
                     </div>
                   </div>
-                  {!isMine ? (
-                    <button
-                      onClick={() => handleBuy(listing._id)}
-                      disabled={!!buyingId}
-                      style={{ width: '100%', padding: '12px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: '12px', color: '#fff', fontWeight: 600, fontSize: '14px', cursor: buyingId ? 'wait' : 'pointer', opacity: buyingId === listing._id ? 0.7 : 1 }}>
-                      {buyingId === listing._id ? 'Buying...' : 'Buy Ticket'}
-                    </button>
-                  ) : (
-                    <div style={{ padding: '10px', background: 'rgba(107,114,128,0.1)', borderRadius: '10px', textAlign: 'center', color: '#6b7280', fontSize: '13px' }}>
-                      Your listing
+
+                  <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+                    <div>
+                      <span style={{ fontSize: '11px', color: '#8C8C8C', display: 'block', textTransform: 'uppercase' }}>Verified Price</span>
+                      <span style={{ fontSize: '24px', fontWeight: 900, color: '#026CDF' }}>
+                        ${item.price?.toFixed(2)}
+                      </span>
                     </div>
-                  )}
+
+                    {!isMine ? (
+                      <button
+                        className="btn-primary"
+                        style={{ padding: '10px 22px', fontSize: '14px', borderRadius: '8px' }}
+                        disabled={buyingId === item._id}
+                        onClick={() => handleBuy(item._id)}
+                      >
+                        {buyingId === item._id ? 'Securing...' : 'Buy This Ticket'}
+                      </button>
+                    ) : (
+                      <span style={{ fontSize: '12px', fontWeight: 700, color: '#6B6B6B', backgroundColor: '#F3F4F6', padding: '6px 12px', borderRadius: '6px' }}>
+                        Your Active Listing
+                      </span>
+                    )}
+                  </div>
                 </div>
               );
-            })
-          )}
-        </div>
+            })}
+          </div>
+        )}
       </div>
     </AppLayout>
   );
