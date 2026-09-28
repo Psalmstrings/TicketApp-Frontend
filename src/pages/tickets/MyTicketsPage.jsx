@@ -2,390 +2,492 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AppLayout from '../../components/layout/AppLayout.jsx';
 import TicketCard from '../../components/tickets/TicketCard.jsx';
-import DigitalTicket from '../../components/tickets/DigitalTicket.jsx';
 import TicketmasterSpinner from '../../components/ui/TicketmasterSpinner.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { useToast } from '../../components/ui/Toast.jsx';
 import api from '../../lib/axios.js';
-import { Ticket, ArrowRight, Send, DollarSign, X } from 'lucide-react';
+import { Ticket, ArrowRight, HelpCircle, X, ExternalLink, ShieldCheck } from 'lucide-react';
 
-const TABS = [
-  { key: 'upcoming', label: 'Upcoming' },
-  { key: 'past', label: 'Past' },
-  { key: 'transferred', label: 'Transferred' },
-  { key: 'listed', label: 'Resale Listings' },
-];
+/**
+ * Circular Flag Icon matching screenshot 1
+ */
+function CountryFlagCircle({ size = 20 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      style={{
+        borderRadius: '50%',
+        flexShrink: 0,
+        overflow: 'hidden',
+        boxShadow: '0 0 0 1px rgba(255,255,255,0.2)',
+      }}
+    >
+      <rect x="0" y="0" width="8" height="24" fill="#169B62" />
+      <rect x="8" y="0" width="8" height="24" fill="#FFFFFF" />
+      <rect x="16" y="0" width="8" height="24" fill="#FF883E" />
+    </svg>
+  );
+}
 
 export default function MyTicketsPage() {
   const { user } = useAuth();
-  const toast = useToast();
   const navigate = useNavigate();
 
-  const [filter, setFilter] = useState('upcoming');
-  const [tickets, setTickets] = useState([]);
+  const [activeTab, setActiveTab] = useState('upcoming');
+  const [upcomingTickets, setUpcomingTickets] = useState([]);
+  const [pastTickets, setPastTickets] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // Digital Ticket Modal & Actions
-  const [activeDigitalTicket, setActiveDigitalTicket] = useState(null);
-  const [transferTicketTarget, setTransferTicketTarget] = useState(null);
-  const [resaleTicketTarget, setResaleTicketTarget] = useState(null);
-
-  // Transfer form
-  const [recipientEmail, setRecipientEmail] = useState('');
-  const [recipientName, setRecipientName] = useState('');
-  const [submittingTransfer, setSubmittingTransfer] = useState(false);
-
-  // Resale form
-  const [resalePrice, setResalePrice] = useState('');
-  const [submittingResale, setSubmittingResale] = useState(false);
-
-  const isApproved = user?.status === 'APPROVED' || user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+  const [showHelpModal, setShowHelpModal] = useState(false);
 
   useEffect(() => {
-    fetchTickets();
-  }, [filter]);
+    fetchAllTickets();
+  }, []);
 
-  const fetchTickets = async () => {
+  const fetchAllTickets = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get(`/tickets/my-tickets?filter=${filter}`);
-      const list = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
-      setTickets(list);
+      // Fetch both upcoming and past tickets to display accurate tab counts
+      const [upRes, pastRes] = await Promise.allSettled([
+        api.get('/tickets/my-tickets?filter=upcoming'),
+        api.get('/tickets/my-tickets?filter=past'),
+      ]);
+
+      const upData =
+        upRes.status === 'fulfilled'
+          ? Array.isArray(upRes.value?.data?.data)
+            ? upRes.value.data.data
+            : Array.isArray(upRes.value?.data)
+            ? upRes.value.data
+            : []
+          : [];
+
+      const pastData =
+        pastRes.status === 'fulfilled'
+          ? Array.isArray(pastRes.value?.data?.data)
+            ? pastRes.value.data.data
+            : Array.isArray(pastRes.value?.data)
+            ? pastRes.value.data
+            : []
+          : [];
+
+      setUpcomingTickets(upData);
+      setPastTickets(pastData);
     } catch (err) {
-      console.error(err);
-      setTickets([]);
+      console.error('Error fetching tickets:', err);
+      setUpcomingTickets([]);
+      setPastTickets([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleTransferSubmit = async (e) => {
-    e.preventDefault();
-    if (!recipientEmail.trim()) {
-      toast.error('Recipient email is required.');
-      return;
-    }
-    setSubmittingTransfer(true);
-    try {
-      await api.post('/transfers', {
-        ticketId: transferTicketTarget._id || transferTicketTarget.id,
-        recipientEmail: recipientEmail.trim(),
-        recipientName: recipientName.trim(),
-      });
-      toast.success('Transfer initiated! Recipient will receive an invitation to accept.');
-      setTransferTicketTarget(null);
-      setRecipientEmail('');
-      setRecipientName('');
-      fetchTickets();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Transfer failed.');
-    } finally {
-      setSubmittingTransfer(false);
-    }
+  /**
+   * Group tickets by event so that multiple tickets for the same event
+   * display as a single card with the ticket count (e.g. x3)
+   */
+  const groupTicketsByEvent = (ticketList) => {
+    const groups = [];
+    const eventMap = new Map();
+
+    ticketList.forEach((ticket) => {
+      const event = ticket.eventId || {};
+      const eventKey = event._id || event.id || event.title || ticket._id || 'unknown';
+
+      if (!eventMap.has(eventKey)) {
+        const newGroup = {
+          eventKey,
+          event,
+          tickets: [],
+          primaryTicketId: ticket._id || ticket.id,
+          primaryTicket: ticket,
+          ticketCount: 0,
+        };
+        eventMap.set(eventKey, newGroup);
+        groups.push(newGroup);
+      }
+
+      const group = eventMap.get(eventKey);
+      group.tickets.push(ticket);
+      group.ticketCount = group.tickets.length;
+    });
+
+    return groups;
   };
 
-  const handleResaleSubmit = async (e) => {
-    e.preventDefault();
-    const price = parseFloat(resalePrice);
-    if (isNaN(price) || price <= 0) {
-      toast.error('Enter a valid resale price.');
-      return;
-    }
-    setSubmittingResale(true);
-    try {
-      await api.post('/resale', {
-        ticketId: resaleTicketTarget._id || resaleTicketTarget.id,
-        price,
-      });
-      toast.success('Ticket listed on the Resale Marketplace!');
-      setResaleTicketTarget(null);
-      setResalePrice('');
-      fetchTickets();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Listing failed.');
-    } finally {
-      setSubmittingResale(false);
-    }
-  };
+  const upcomingGroups = groupTicketsByEvent(upcomingTickets);
+  const pastGroups = groupTicketsByEvent(pastTickets);
+
+  const displayedGroups = activeTab === 'upcoming' ? upcomingGroups : pastGroups;
 
   return (
-    <AppLayout>
-      {/* Header Bar */}
-      <div style={{ backgroundColor: '#FFFFFF', borderBottom: '1px solid #E5E5E5', padding: '28px 0 0' }}>
-        <div className="tm-container">
-          <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#1F1F1F', margin: '0 0 16px 0' }}>
-            My Tickets
-          </h1>
+    <AppLayout hideHeader={true} hideFooter={true} hideBottomNav={false} bgColor="#000000">
+      <div
+        style={{
+          width: '100%',
+          maxWidth: '480px',
+          margin: '0 auto',
+          minHeight: '100vh',
+          backgroundColor: '#000000',
+          color: '#FFFFFF',
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'relative',
+        }}
+      >
+        {/* Top App Header matching Screenshot 1 */}
+        <div
+          style={{
+            position: 'sticky',
+            top: 0,
+            zIndex: 900,
+            backgroundColor: '#000000',
+            paddingTop: '16px',
+            borderBottom: '1px solid #1A1A1A',
+          }}
+        >
+          {/* Top Bar: Title + Flag + Help */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '8px 18px 14px',
+              position: 'relative',
+            }}
+          >
+            {/* Left Spacer for symmetry */}
+            <div style={{ width: '48px' }} />
 
-          {/* Navigation Tabs */}
-          <div style={{ display: 'flex', gap: '24px', borderBottom: '1px solid #E5E5E5' }}>
-            {TABS.map((t) => {
-              const isActive = filter === t.key;
-              return (
-                <button
-                  key={t.key}
-                  onClick={() => setFilter(t.key)}
+            {/* Centered Title with Country Flag Badge */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                justifyContent: 'center',
+              }}
+            >
+              <h1
+                style={{
+                  fontSize: '17px',
+                  fontWeight: 700,
+                  color: '#FFFFFF',
+                  margin: 0,
+                  letterSpacing: '-0.01em',
+                }}
+              >
+                My Tickets
+              </h1>
+              <CountryFlagCircle size={20} />
+            </div>
+
+            {/* Right: Help button */}
+            <button
+              onClick={() => setShowHelpModal(true)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#FFFFFF',
+                fontSize: '15px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                padding: '4px 6px',
+                width: '48px',
+                textAlign: 'right',
+              }}
+            >
+              Help
+            </button>
+          </div>
+
+          {/* Navigation Tabs: Upcoming (N) | Past (N) */}
+          <div
+            style={{
+              display: 'flex',
+              width: '100%',
+              borderTop: '1px solid #141414',
+            }}
+          >
+            {/* Upcoming Tab */}
+            <button
+              onClick={() => setActiveTab('upcoming')}
+              style={{
+                flex: 1,
+                padding: '14px 0',
+                background: 'none',
+                border: 'none',
+                fontSize: '15px',
+                fontWeight: activeTab === 'upcoming' ? 700 : 500,
+                color: activeTab === 'upcoming' ? '#FFFFFF' : '#8E8E93',
+                cursor: 'pointer',
+                textAlign: 'center',
+                position: 'relative',
+                transition: 'color 0.15s ease',
+              }}
+            >
+              Upcoming ({upcomingGroups.length})
+              {activeTab === 'upcoming' && (
+                <div
                   style={{
-                    padding: '12px 0',
-                    border: 'none',
-                    background: 'none',
-                    fontSize: '14px',
-                    fontWeight: isActive ? 700 : 500,
-                    color: isActive ? '#026CDF' : '#6B6B6B',
-                    borderBottom: isActive ? '3px solid #026CDF' : '3px solid transparent',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    height: '3px',
+                    backgroundColor: '#FFFFFF',
+                  }}
+                />
+              )}
+            </button>
+
+            {/* Past Tab */}
+            <button
+              onClick={() => setActiveTab('past')}
+              style={{
+                flex: 1,
+                padding: '14px 0',
+                background: 'none',
+                border: 'none',
+                fontSize: '15px',
+                fontWeight: activeTab === 'past' ? 700 : 500,
+                color: activeTab === 'past' ? '#FFFFFF' : '#8E8E93',
+                cursor: 'pointer',
+                textAlign: 'center',
+                position: 'relative',
+                transition: 'color 0.15s ease',
+              }}
+            >
+              Past ({pastGroups.length})
+              {activeTab === 'past' && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    height: '3px',
+                    backgroundColor: '#FFFFFF',
+                  }}
+                />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Tickets Content List */}
+        <div
+          style={{
+            padding: '16px 16px 90px',
+            flex: 1,
+            backgroundColor: '#000000',
+          }}
+        >
+          {loading ? (
+            <div style={{ padding: '80px 0', textAlign: 'center' }}>
+              <TicketmasterSpinner size="md" message="Loading your tickets..." />
+            </div>
+          ) : displayedGroups.length === 0 ? (
+            <div
+              style={{
+                textAlign: 'center',
+                padding: '60px 20px',
+                backgroundColor: '#0D0D0D',
+                borderRadius: '12px',
+                border: '1px solid #1F1F1F',
+                marginTop: '20px',
+              }}
+            >
+              <div
+                style={{
+                  width: '60px',
+                  height: '60px',
+                  borderRadius: '50%',
+                  backgroundColor: '#1A1A1A',
+                  color: '#026CDF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 16px',
+                }}
+              >
+                <Ticket size={28} />
+              </div>
+              <h3
+                style={{
+                  fontSize: '18px',
+                  fontWeight: 800,
+                  color: '#FFFFFF',
+                  margin: '0 0 8px 0',
+                }}
+              >
+                No {activeTab} tickets
+              </h3>
+              <p
+                style={{
+                  fontSize: '14px',
+                  color: '#8E8E93',
+                  margin: '0 0 24px 0',
+                  lineHeight: 1.5,
+                }}
+              >
+                {activeTab === 'upcoming'
+                  ? "You don't have any upcoming tickets yet. Browse top trending concerts, sports, and shows."
+                  : 'You have no past tickets or previous event orders.'}
+              </p>
+
+              {activeTab === 'upcoming' && (
+                <Link
+                  to="/explore"
+                  className="btn-primary"
+                  style={{
+                    padding: '12px 24px',
+                    borderRadius: '8px',
+                    backgroundColor: '#026CDF',
+                    color: '#FFFFFF',
+                    fontWeight: 700,
                   }}
                 >
-                  {t.label}
-                </button>
-              );
-            })}
-          </div>
+                  Browse Events <ArrowRight size={16} />
+                </Link>
+              )}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {displayedGroups.map((group) => (
+                <TicketCard
+                  key={group.eventKey}
+                  ticket={group.primaryTicket}
+                  event={group.event}
+                  tickets={group.tickets}
+                  ticketCount={group.ticketCount}
+                  onClick={() => navigate(`/tickets/${group.primaryTicketId}`)}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Main Ticket Wallet Content Area */}
-      <div className="tm-container" style={{ padding: '32px 20px', maxWidth: '840px' }}>
-        {loading ? (
-          <div style={{ padding: '60px 0', textAlign: 'center' }}>
-            <TicketmasterSpinner size="md" message="Loading your ticket wallet..." />
-          </div>
-        ) : tickets.length === 0 ? (
+      {/* Help Modal */}
+      {showHelpModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.75)',
+            backdropFilter: 'blur(6px)',
+            zIndex: 3000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+          }}
+          onClick={() => setShowHelpModal(false)}
+        >
           <div
+            onClick={(e) => e.stopPropagation()}
             style={{
-              textAlign: 'center',
-              padding: '60px 20px',
-              backgroundColor: '#FFFFFF',
+              backgroundColor: '#1E1E1E',
+              color: '#FFFFFF',
               borderRadius: '16px',
-              border: '1px solid #E5E5E5',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+              padding: '24px',
+              maxWidth: '420px',
+              width: '100%',
+              border: '1px solid #333333',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
             }}
           >
             <div
               style={{
-                width: '60px',
-                height: '60px',
-                borderRadius: '50%',
-                backgroundColor: '#EBF3FD',
-                color: '#026CDF',
                 display: 'flex',
+                justifyContent: 'space-between',
                 alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 16px',
+                marginBottom: '16px',
               }}
             >
-              <Ticket size={28} />
-            </div>
-            <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#1F1F1F', margin: '0 0 6px 0' }}>
-              No {filter} tickets found
-            </h3>
-            <p style={{ fontSize: '14px', color: '#6B6B6B', margin: '0 0 20px 0', lineHeight: 1.5 }}>
-              {filter === 'upcoming'
-                ? "You don't have any upcoming tickets yet. Browse trending concerts, sports matches, and shows."
-                : `No tickets currently categorized under "${filter}".`}
-            </p>
-
-            {filter === 'upcoming' && (
-              <Link to="/explore" className="btn-primary" style={{ padding: '12px 24px', borderRadius: '8px' }}>
-                Browse Live Events <ArrowRight size={16} />
-              </Link>
-            )}
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            {tickets.map((t) => (
-              <TicketCard
-                key={t._id || t.id}
-                ticket={t}
-                variant="wallet"
-                onTransfer={(ticket) => {
-                  if (!isApproved) {
-                    toast.error('Account approval required to transfer tickets.');
-                    return;
-                  }
-                  setTransferTicketTarget(ticket);
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <HelpCircle size={22} color="#026CDF" />
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#FFFFFF' }}>
+                  Customer Support
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowHelpModal(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '22px',
+                  color: '#8E8E93',
+                  cursor: 'pointer',
+                  padding: '4px',
                 }}
-                onResale={(ticket) => {
-                  if (!isApproved) {
-                    toast.error('Account approval required to resell tickets.');
-                    return;
-                  }
-                  setResaleTicketTarget(ticket);
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: '14px', color: '#B3B3B3', lineHeight: 1.5, marginBottom: '20px' }}>
+              Need assistance with your tickets, orders, or event entry? Our support team is available 24/7.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+              <div
+                style={{
+                  padding: '12px 14px',
+                  backgroundColor: '#2A2A2A',
+                  borderRadius: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
                 }}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* ===== DIGITAL TICKET MODAL ===== */}
-      {activeDigitalTicket && (
-        <DigitalTicket
-          ticket={activeDigitalTicket}
-          onClose={() => setActiveDigitalTicket(null)}
-          onTransfer={(t) => {
-            setActiveDigitalTicket(null);
-            setTransferTicketTarget(t);
-          }}
-          onResale={(t) => {
-            setActiveDigitalTicket(null);
-            setResaleTicketTarget(t);
-          }}
-          canTransfer={isApproved}
-          canResell={isApproved}
-        />
-      )}
-
-      {/* ===== TRANSFER MODAL ===== */}
-      {transferTicketTarget && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0,0,0,0.65)',
-            backdropFilter: 'blur(4px)',
-            zIndex: 3000,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '16px',
-          }}
-          onClick={() => setTransferTicketTarget(null)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: '#FFFFFF',
-              borderRadius: '16px',
-              padding: '24px',
-              maxWidth: '460px',
-              width: '100%',
-              boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Send size={20} color="#026CDF" />
-                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>Transfer Ticket</h3>
-              </div>
-              <button
-                onClick={() => setTransferTicketTarget(null)}
-                style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#6B6B6B' }}
               >
-                ×
-              </button>
+                <ShieldCheck size={18} color="#059669" />
+                <div>
+                  <p style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: '#FFFFFF' }}>
+                    100% Buyer Guarantee
+                  </p>
+                  <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#9CA3AF' }}>
+                    Valid tickets or your money back
+                  </p>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  padding: '12px 14px',
+                  backgroundColor: '#2A2A2A',
+                  borderRadius: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                }}
+              >
+                <Ticket size={18} color="#026CDF" />
+                <div>
+                  <p style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: '#FFFFFF' }}>
+                    SafeTix Digital Barcodes
+                  </p>
+                  <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#9CA3AF' }}>
+                    Barcodes update dynamically for secure gate entry
+                  </p>
+                </div>
+              </div>
             </div>
 
-            <p style={{ fontSize: '13px', color: '#6B6B6B', margin: '0 0 16px 0', lineHeight: 1.5 }}>
-              Transfer ticket <strong>#{transferTicketTarget.ticketNumber}</strong> safely. The recipient will be notified and can accept directly.
-            </p>
-
-            <form onSubmit={handleTransferSubmit}>
-              <div style={{ marginBottom: '14px' }}>
-                <label className="input-label">Recipient Name (Optional)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Alex Smith"
-                  value={recipientName}
-                  onChange={(e) => setRecipientName(e.target.value)}
-                  className="input"
-                />
-              </div>
-
-              <div style={{ marginBottom: '20px' }}>
-                <label className="input-label">Recipient Email Address *</label>
-                <input
-                  type="email"
-                  placeholder="friend@example.com"
-                  value={recipientEmail}
-                  onChange={(e) => setRecipientEmail(e.target.value)}
-                  className="input"
-                  required
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={submittingTransfer}
-                className="btn-primary"
-                style={{ width: '100%', padding: '13px' }}
-              >
-                {submittingTransfer ? 'Sending Invitation...' : 'Send Transfer Invitation'}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ===== RESALE MODAL ===== */}
-      {resaleTicketTarget && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0,0,0,0.65)',
-            backdropFilter: 'blur(4px)',
-            zIndex: 3000,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '16px',
-          }}
-          onClick={() => setResaleTicketTarget(null)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: '#FFFFFF',
-              borderRadius: '16px',
-              padding: '24px',
-              maxWidth: '460px',
-              width: '100%',
-              boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <DollarSign size={20} color="#EA580C" />
-                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>List on Resale Marketplace</h3>
-              </div>
-              <button
-                onClick={() => setResaleTicketTarget(null)}
-                style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#6B6B6B' }}
-              >
-                ×
-              </button>
-            </div>
-
-            <p style={{ fontSize: '13px', color: '#6B6B6B', margin: '0 0 16px 0', lineHeight: 1.5 }}>
-              List ticket <strong>#{resaleTicketTarget.ticketNumber}</strong> on Ticketmaster's verified exchange. When purchased, payment is credited to your balance.
-            </p>
-
-            <form onSubmit={handleResaleSubmit}>
-              <div style={{ marginBottom: '20px' }}>
-                <label className="input-label">Resale Listing Price ($) *</label>
-                <input
-                  type="number"
-                  min="1"
-                  step="1"
-                  placeholder="e.g. 85"
-                  value={resalePrice}
-                  onChange={(e) => setResalePrice(e.target.value)}
-                  className="input"
-                  required
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={submittingResale}
-                className="btn-primary"
-                style={{ width: '100%', padding: '13px', backgroundColor: '#EA580C' }}
-              >
-                {submittingResale ? 'Listing Ticket...' : 'Confirm Resale Listing'}
-              </button>
-            </form>
+            <button
+              onClick={() => setShowHelpModal(false)}
+              className="btn-primary"
+              style={{
+                width: '100%',
+                padding: '12px',
+                borderRadius: '8px',
+                fontWeight: 700,
+                backgroundColor: '#026CDF',
+              }}
+            >
+              Close
+            </button>
           </div>
         </div>
       )}
